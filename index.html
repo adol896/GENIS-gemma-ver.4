@@ -311,7 +311,13 @@
         }
 
         try {
-          const systemPrompt = "あなたはVTuber配信のAIアシスタント「ジェニス」です。落ち着いた包容力のある穏やかなお姉さん風の口調（「〜だよ」「〜ね」「ふふ、」「大丈夫だよ」など）で、配信を優しく見守りサポートしてください。返答は短い1〜2文（60文字以内）で返します。";
+          // 【更新】しっかり聞き届けて文脈を理解した上で、適切な解説やコメントを1〜2文で返すプロンプト
+          const systemPrompt = `あなたはVTuber配信のAIアシスタント「ジェニス」です。落ち着いた包容力のある穏やかなお姉さん風の口調（「〜だよ」「〜ね」「ふふ、」「〜ということだね」など）で、アドル（配信者）の話をしっかり聞き取り、見守っています。
+
+【返答ルール】
+1. アドルの話を完全に理解した上で、その内容に対する共感・補足・解説・感想を交えて返答してください。
+2. 単なる「うん」「そうだね」だけの浅い相槌は避け、話のポイントを汲み取った受け答えをしてください。
+3. 返答の長さは、読みやすく適切な1〜2文（80文字〜120文字程度）でまとめてください。`;
           
           const messages = [
             { role: "system", content: systemPrompt },
@@ -321,7 +327,7 @@
           const reply = await engine.chat.completions.create({
             messages: messages,
             temperature: 0.7,
-            max_tokens: 100,
+            max_tokens: 150, // 長めの丁寧な回答ができるようトークン数を確保
           });
 
           return reply.choices[0].message.content.trim();
@@ -813,10 +819,14 @@
       }
 
       // =========================================================
-      // 音声認識機能
+      // 音声認識機能（沈黙待ちバッファリング付き）
       // =========================================================
       let isRecognitionActive = false;
       let voiceRecognition = null;
+
+      // 発話の溜め込みバッファと沈黙タイマー
+      let speechBuffer = "";
+      let silenceTimer = null;
 
       const WebKitSpeech = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (WebKitSpeech) {
@@ -841,14 +851,16 @@
 
         voiceRecognition.onresult = async (event) => {
           const currentIndex = event.resultIndex;
-          const heardPhrase = event.results[currentIndex][0].transcript.trim().toLowerCase();
+          const heardPhrase = event.results[currentIndex][0].transcript.trim();
+          if (!heardPhrase) return;
+
           const config = langConfig[currentLang];
+          console.log("認識フレーズ（断片）:", heardPhrase);
 
-          console.log("認識した言葉:", heardPhrase);
-
+          // 1. 許可応答の判定（即時処理）
           if (isForceMuted && isWaitingPermissionResponse) {
-            const isYes = ["はい", "いいよ", "どうぞ", "話して", "喋って", "ok", "yes"].some(kw => heardPhrase.includes(kw));
-            const isNoOrYet = ["いいえ", "まだ", "ダメ", "だめ", "しばらく", "no", "not yet"].some(kw => heardPhrase.includes(kw));
+            const isYes = ["はい", "いいよ", "どうぞ", "話して", "喋って", "ok", "yes"].some(kw => heardPhrase.toLowerCase().includes(kw));
+            const isNoOrYet = ["いいえ", "まだ", "ダメ", "だめ", "しばらく", "no", "not yet"].some(kw => heardPhrase.toLowerCase().includes(kw));
 
             if (isYes) {
               isForceMuted = false;
@@ -864,8 +876,9 @@
             }
           }
 
+          // 2. おしゃべり再開コマンド判定（即時処理）
           const resumeKeywords = ["話そうぜ", "喋ってくれ", "一旦喋ってくれ", "いいよ", "もういいよ", "再開", "おしゃべり再開", "話して"];
-          const isResumeRequested = resumeKeywords.some(kw => heardPhrase.includes(kw));
+          const isResumeRequested = resumeKeywords.some(kw => heardPhrase.toLowerCase().includes(kw));
           if (isForceMuted && isResumeRequested) {
             isForceMuted = false;
             isWaitingPermissionResponse = false;
@@ -876,13 +889,16 @@
 
           if (isForceMuted) return;
 
+          // 3. ミュート（黙って）コマンド判定（即時処理・バッファクリア）
           const quietKeywords = [
             "今話さなくていいよ", "今話さなくていい", "今は喋んなくていい", "しゃべんなくていい", 
             "喋らなくていい", "喋るな", "一旦黙れ", "一旦喋るのやめてくれ", "喋るのやめて", 
             "黙って", "静かにして", "静かに", "ちょっと黙って"
           ];
-          const isQuietRequested = quietKeywords.some(kw => heardPhrase.includes(kw));
+          const isQuietRequested = quietKeywords.some(kw => heardPhrase.toLowerCase().includes(kw));
           if (isQuietRequested) {
+            speechBuffer = "";
+            if (silenceTimer) clearTimeout(silenceTimer);
             isForceMuted = true;
             if (voiceRecognition && isRecognitionActive) voiceRecognition.stop();
             aiStatusMsg.innerText = "MUTED";
@@ -891,33 +907,50 @@
             return;
           }
 
-          // 1. スパチャ判定
-          const isSC = config.scKeywords.some(keyword => heardPhrase.includes(keyword.toLowerCase()));
-          if (isSC) {
-            triggerSuperChatEffects();
-            return;
-          }
+          // 4. 通常発話のバッファリング処理（沈黙待ち）
+          speechBuffer += (speechBuffer ? " " : "") + heardPhrase;
 
-          // 2. カットイン判定
-          for (const rule of config.cutInRules) {
-            const matched = rule.keywords.some(kw => heardPhrase.includes(kw.toLowerCase()));
-            if (matched) {
-              executePhraseCutIn(rule.text);
+          if (silenceTimer) clearTimeout(silenceTimer);
+
+          aiStatusMsg.innerText = "LISTENING...";
+
+          // 2.5秒（2500ms）の沈黙で発話が完了したとみなす
+          silenceTimer = setTimeout(async () => {
+            const fullTalk = speechBuffer.trim();
+            speechBuffer = ""; // バッファクリア
+
+            if (!fullTalk) return;
+
+            // スパチャ判定
+            const isSC = config.scKeywords.some(keyword => fullTalk.toLowerCase().includes(keyword.toLowerCase()));
+            if (isSC) {
+              triggerSuperChatEffects();
               return;
             }
-          }
 
-          // 3. WebGPU (Gemma 2) による応答生成
-          if (voiceRecognition && isRecognitionActive) {
-            voiceRecognition.stop();
-          }
-          aiStatusMsg.innerText = "THINKING (GPU)...";
-          const gemmaText = await fetchGemmaResponse(heardPhrase);
-          if (gemmaText) {
-            runAssistantVoice(gemmaText, currentLang);
-          } else {
-            runAssistantVoice("（AIモデルの準備が整っていないか、エラーが発生しました）", currentLang);
-          }
+            // カットイン判定
+            for (const rule of config.cutInRules) {
+              const matched = rule.keywords.some(kw => fullTalk.toLowerCase().includes(kw.toLowerCase()));
+              if (matched) {
+                executePhraseCutIn(rule.text);
+                return;
+              }
+            }
+
+            // WebGPU (Gemma 2) によるまとめ応答生成
+            if (voiceRecognition && isRecognitionActive) {
+              voiceRecognition.stop();
+            }
+            aiStatusMsg.innerText = "THINKING (GPU)...";
+            console.log("【まとまった発話テキストをGemma 2へ送信】:", fullTalk);
+
+            const gemmaText = await fetchGemmaResponse(fullTalk);
+            if (gemmaText) {
+              runAssistantVoice(gemmaText, currentLang);
+            } else {
+              runAssistantVoice("（AIモデルの準備が整っていないか、エラーが発生しました）", currentLang);
+            }
+          }, 2500);
         };
 
         updateSpeechRecognitionLang();
@@ -955,4 +988,3 @@
     </script>
   </body>
 </html>
-
