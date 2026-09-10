@@ -200,7 +200,21 @@
           );
           console.log("WebGPU Gemma 2 2B の準備が完了しました！");
           window.isWebLLMLoading = false;
-          if (statusMsg) statusMsg.innerText = isForceMuted ? "MUTED" : "STANDBY";
+
+          // 準備完了のアナウンスを発声
+          if (window.runAssistantVoice) {
+            window.isForceMuted = false;
+            if (window.stopSilenceTimer) window.stopSilenceTimer();
+            if (window.resetSilenceTimer) window.resetSilenceTimer();
+            if (window.startGemmaCycleTimer) window.startGemmaCycleTimer();
+
+            const announceMsg = (window.currentLang === 'en')
+              ? "AI features are ready! I'm ready to talk whenever you are."
+              : "AI機能の準備が完了しました！いつでもお話しできますよ。";
+            window.runAssistantVoice(announceMsg, window.currentLang || 'ja');
+          } else if (statusMsg) {
+            statusMsg.innerText = "STANDBY";
+          }
         } catch (err) {
           console.error("WebGPU Gemma のロード失敗:", err);
           window.isWebLLMLoading = false;
@@ -247,7 +261,7 @@
         <h2>📖 使い方 ＆ 機能解説マニュアル</h2>
         
         <h3>1. WebGPU Gemma 2 (2B) ブラウザローカルAI機能</h3>
-        <p>画面を 1 回クリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期読み込み（自動ダウンロード）され、PC の GPU 資源を活用してローカル環境で直接推論が行われます。Ollama 等のバックエンドソフトのインストールや起動は不要です。</p>
+        <p>画面を 1 回クリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期読み込み（自動ダウンロード）され、PC の GPU 資源を活用してローカル環境で直接推論が行われます。読み込み完了時にジェニスが「AI機能の準備が完了しました！」と音声アナウンスします。</p>
 
         <h3>2. 20秒交互サイクル（応答 ↔ 待機）仕様</h3>
         <ul>
@@ -305,9 +319,7 @@
         });
       }
 
-      // =========================================================
       // クレジットモーダルの制御
-      // =========================================================
       const creditsModal = document.getElementById('credits-modal');
       const toggleCreditsBtn = document.getElementById('toggle-credits-btn');
       const closeCreditsBtn = document.getElementById('close-credits-btn');
@@ -328,9 +340,7 @@
         }
       });
 
-      // =========================================================
       // データの統合処理 (data.js と data2.js をマージ)
-      // =========================================================
       const rawData1 = window.AIData1 || window.AIData || {};
       const rawData2 = window.AIData2 || {};
 
@@ -469,8 +479,8 @@
         });
       }
 
-      // フラグ管理
-      let isForceMuted = true;
+      // グローバル管理フラグ ＆ 関数定義
+      window.isForceMuted = true;
       let isWaitingPermissionResponse = false;
 
       // =========================================================
@@ -487,7 +497,7 @@
       function startGemmaCycleTimer() {
         if (gemmaCycleTimer) clearInterval(gemmaCycleTimer);
         gemmaCycleTimer = setInterval(() => {
-          if (isForceMuted) return;
+          if (window.isForceMuted) return;
 
           if (gemmaCycleState === 'ACTIVE') {
             if (!hasRespondedInCurrentCycle && userSpeechBuffer.length > 0) {
@@ -503,20 +513,23 @@
           }
         }, SILENCE_LIMIT);
       }
+      window.startGemmaCycleTimer = startGemmaCycleTimer;
 
       function resetSilenceTimer() {
-        if (isForceMuted) return;
+        if (window.isForceMuted) return;
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = setTimeout(triggerSilenceTalk, SILENCE_LIMIT);
       }
+      window.resetSilenceTimer = resetSilenceTimer;
 
       function stopSilenceTimer() {
         if (silenceTimer) clearTimeout(silenceTimer);
       }
+      window.stopSilenceTimer = stopSilenceTimer;
 
       // 20秒間完全無言時に data2.js / data.js から発言
       function triggerSilenceTalk() {
-        if (isForceMuted || isSpeaking) {
+        if (window.isForceMuted || isSpeaking) {
           resetSilenceTimer();
           return;
         }
@@ -568,7 +581,6 @@
           let resultText = reply.choices[0]?.message?.content || "";
           resultText = resultText.trim();
 
-          // 1〜2文のみに制限
           const sentences = resultText.split(/(?<=[。！？!?\n])/);
           if (sentences.length > 2) {
             resultText = sentences.slice(0, 2).join("");
@@ -581,7 +593,7 @@
       }
 
       async function processGemmaResponse() {
-        if (userSpeechBuffer.length === 0 || isSpeaking || isForceMuted) return;
+        if (userSpeechBuffer.length === 0 || isSpeaking || window.isForceMuted) return;
 
         hasRespondedInCurrentCycle = true;
         const combinedText = userSpeechBuffer.join(" ");
@@ -601,7 +613,7 @@
 
       // カットイン・スパチャ機能
       async function executePhraseCutIn(text) {
-        if (isForceMuted) return;
+        if (window.isForceMuted) return;
         const cutInBox = document.getElementById('phrase-cutin-box');
         const cutInText = document.getElementById('phrase-text-content');
 
@@ -623,7 +635,7 @@
       }
 
       function triggerSuperChatEffects() {
-        if (isForceMuted) return;
+        if (window.isForceMuted) return;
         const scBox = document.getElementById('sc-popup-box');
         scBox.classList.add('show');
         fireConfetti();
@@ -683,6 +695,7 @@
 
       let isSpeaking = false;
       let currentLang = 'ja';
+      window.currentLang = currentLang;
       let currentVoiceAudio = null;
       let isAutomaticTalk = false;
 
@@ -725,6 +738,7 @@
         e.stopPropagation();
         unlockAudio();
         currentLang = (currentLang === 'ja') ? 'en' : 'ja';
+        window.currentLang = currentLang;
         toggleLangBtn.innerText = `LANG: ${currentLang.toUpperCase()}`;
         document.getElementById('sc-text-content').innerText = langConfig[currentLang].scDefaultText;
         updateSpeechRecognitionLang();
@@ -839,16 +853,17 @@
         }
 
         isSpeaking = false;
-        if (!isForceMuted) resetSilenceTimer();
+        if (!window.isForceMuted) resetSilenceTimer();
         updateAvatarState();
-        aiStatusMsg.innerText = isForceMuted ? "MUTED" : "STANDBY";
+        aiStatusMsg.innerText = window.isForceMuted ? "MUTED" : "STANDBY";
         aiSubtitleBox.classList.remove('active');
 
         safeStartRecognition();
       }
+      window.runAssistantVoice = runAssistantVoice;
 
       function triggerTalk() {
-        if (isForceMuted || isSpeaking) return;
+        if (window.isForceMuted || isSpeaking) return;
         const selectedText = getNextText();
         runAssistantVoice(selectedText, currentLang);
       }
@@ -879,8 +894,8 @@
 
           // 音声による話しかけ再開
           const resumeKeywords = ["話そうぜ", "喋ってくれ", "いいよ", "再開", "話して"];
-          if (isForceMuted && resumeKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw))) {
-            isForceMuted = false;
+          if (window.isForceMuted && resumeKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw))) {
+            window.isForceMuted = false;
             stopSilenceTimer();
             resetSilenceTimer();
             startGemmaCycleTimer();
@@ -889,13 +904,13 @@
             return;
           }
 
-          if (isForceMuted) return;
+          if (window.isForceMuted) return;
           resetSilenceTimer();
 
           // 静寂（ミュート）コマンド
           const quietKeywords = ["黙って", "静かにして", "喋るのやめて", "静かに"];
           if (quietKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw))) {
-            isForceMuted = true;
+            window.isForceMuted = true;
             if (voiceRecognition && isRecognitionActive) voiceRecognition.stop();
             stopSilenceTimer();
             if (gemmaCycleTimer) clearInterval(gemmaCycleTimer);
@@ -925,7 +940,7 @@
               if (responses && responses.length > 0) {
                 const randomResp = responses[Math.floor(Math.random() * responses.length)];
                 runAssistantVoice(randomResp, currentLang);
-                return; // 辞書でヒットした場合はGemma処理へ行かず終了
+                return;
               }
             }
           }
@@ -944,7 +959,7 @@
         };
 
         updateSpeechRecognitionLang();
-        setInterval(() => { if (!isRecognitionActive && !isForceMuted) safeStartRecognition(); }, 1000);
+        setInterval(() => { if (!isRecognitionActive && !window.isForceMuted) safeStartRecognition(); }, 1000);
       }
 
       function safeStartRecognition() {
@@ -962,7 +977,7 @@
 
       document.body.addEventListener('click', (e) => {
         if (e.target === toggleBtn || e.target === toggleLangBtn || e.target === toggleCreditsBtn || e.target === closeCreditsBtn) return;
-        if (isForceMuted) return;
+        if (window.isForceMuted && window.webLLMEngine) return;
 
         unlockAudio();
         safeStartRecognition();
