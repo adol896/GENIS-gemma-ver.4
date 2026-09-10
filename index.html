@@ -535,7 +535,7 @@
         }
       }
 
-      // WebGPU (WebLLM) Gemma 推論呼び出し（セーフティ指示追加版）
+      // WebGPU (WebLLM) Gemma 推論呼び出し
       async function fetchGemmaResponse(promptText) {
         if (!window.webLLMEngine) {
           console.warn("WebGPU Gemma がまだロード完了していません。");
@@ -916,7 +916,21 @@
             }
           }
 
-          // 3. WebGPU Gemma 20秒応答モード処理
+          // 3. 辞書パターン（patternDict）の優先判定（「どうしようかな」などへの固定応答）
+          const patterns = aiData.patternDict?.[currentLang] || [];
+          for (const item of patterns) {
+            const regex = new RegExp(item.pattern, "i");
+            if (regex.test(heardPhrase)) {
+              const responses = item.responses;
+              if (responses && responses.length > 0) {
+                const randomResp = responses[Math.floor(Math.random() * responses.length)];
+                runAssistantVoice(randomResp, currentLang);
+                return; // 辞書でヒットした場合はGemma処理へ行かず終了
+              }
+            }
+          }
+
+          // 4. WebGPU Gemma 20秒応答モード処理
           if (gemmaCycleState === 'ACTIVE' && !hasRespondedInCurrentCycle) {
             userSpeechBuffer.push(heardPhrase);
 
