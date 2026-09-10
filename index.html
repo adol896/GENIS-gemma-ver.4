@@ -8,7 +8,7 @@
       /* ベーススタイル */
       html, body {
           margin: 0; padding: 0; width: 100%; height: 100%;
-          background-color: #00FF00; overflow: hidden; /* OBSのクロマキー(Green)用 */
+          background-color: #00FF00; overflow: hidden; /* OBSクロマキー(Green)用 */
           font-family: 'Helvetica Neue', Arial, sans-serif; color: #ffffff;
       }
 
@@ -49,8 +49,8 @@
       }
       #ai-status-msg {
           font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
-          color: rgba(255, 255, 255, 0.7); text-shadow: 0 2px 4px rgba(0,0,0,0.9); margin-top: 4px;
-          transition: opacity 0.3s ease;
+          color: rgba(255, 255, 255, 0.85); text-shadow: 0 2px 4px rgba(0,0,0,0.9); margin-top: 4px;
+          transition: opacity 0.3s ease; font-weight: bold;
       }
       .controls-row {
           display: flex; gap: 8px; margin-top: 10px; margin-bottom: 25px;
@@ -68,11 +68,11 @@
 
       #ai-subtitle-box {
           position: absolute; bottom: 75px; left: 50%; transform: translateX(-50%);
-          background: rgba(6, 10, 22, 0.85);
+          background: rgba(6, 10, 22, 0.88);
           border-left: 4px solid #00f3ff; border-radius: 0 8px 8px 0;
           padding: 14px 24px; font-size: 24px; font-weight: bold;
           width: 520px; text-align: center; line-height: 1.4;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
           opacity: 0; transform: translate(-50%, 10px);
           transition: opacity 0.2s ease-out, transform 0.2s ease-out;
           pointer-events: none; word-break: break-word; z-index: 20;
@@ -140,7 +140,7 @@
       /* クレジット・説明表示用モーダル */
       .modal-overlay {
           position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(0, 0, 0, 0.85);
           display: flex; justify-content: center; align-items: center;
           z-index: 100; opacity: 0; pointer-events: none;
           transition: opacity 0.3s ease;
@@ -150,12 +150,12 @@
       }
       .modal-content {
           background: #0f1423; border: 1px solid #00f3ff; border-radius: 8px;
-          padding: 24px; width: 85%; max-width: 580px; max-height: 80vh;
+          padding: 24px; width: 88%; max-width: 620px; max-height: 82vh;
           overflow-y: auto; color: #ffffff; box-shadow: 0 0 25px rgba(0, 243, 255, 0.4);
           font-size: 12px; line-height: 1.6;
       }
       .modal-content h2 { 
-          font-size: 15px; color: #00f3ff; margin-top: 20px; border-bottom: 1px solid #00f3ff; 
+          font-size: 16px; color: #00f3ff; margin-top: 22px; border-bottom: 1px solid #00f3ff; 
           padding-bottom: 4px; letter-spacing: 1px;
       }
       .modal-content h2:first-child { margin-top: 0; }
@@ -168,7 +168,7 @@
       .modal-content pre { background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 10px; color: #aaa; }
     </style>
 
-    <!-- データファイルの読み込み -->
+    <!-- データファイルおよび依存ライブラリの読み込み -->
     <script src="data.js" onerror="console.warn('data.js の読み込みをスキップしました')"></script>
     <script src="data2.js" onerror="console.warn('data2.js の読み込みをスキップしました')"></script>
     <script src="kuromoji.js" onerror="console.warn('kuromoji.js の読み込みをスキップしました')"></script>
@@ -208,8 +208,8 @@
             if (window.startGemmaCycleTimer) window.startGemmaCycleTimer();
 
             const announceMsg = (window.currentLang === 'en')
-              ? "AI features are ready! I'm ready to talk whenever you are."
-              : "AI機能の準備が完了しました！いつでもお話しできますよ。";
+              ? "AI features are ready! Genis is online."
+              : "AI機能の準備が完了しました！ジェニスがいつでもお話ししますよ。";
             window.runAssistantVoice(announceMsg, window.currentLang || 'ja');
           } else if (statusMsg) {
             statusMsg.innerText = "STANDBY";
@@ -225,7 +225,7 @@
     </script>
   </head>
   <body>
-    <!-- 紙吹雪用キャンバス -->
+    <!-- 紙吹雪演出用キャンバス -->
     <canvas id="canvas-confetti"></canvas>
 
     <!-- AI アバター ＆ 操作UI -->
@@ -257,26 +257,32 @@
     <!-- 使い方 ＆ クレジット表示用モーダル -->
     <div id="credits-modal" class="modal-overlay">
       <div class="modal-content">
-        <h2>📖 使い方 ＆ 機能解説マニュアル</h2>
+        <h2>📖 AIアシスタント「ジェニス」操作・システムマニュアル</h2>
         
         <h3>1. WebGPU Gemma 2 (2B) ブラウザローカルAI機能</h3>
-        <p>画面を 1 回クリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期読み込みされ、PC の GPU 資源を活用してローカル環境で直接推論が行われます。</p>
+        <p>画面をクリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期ロードされ、GPUを活用して完全ローカルで推論を行います。外部サーバーへ会話ログを送信しません。</p>
 
         <h3>2. 20秒交互サイクル（応答 ↔ 待機）仕様</h3>
         <ul>
-          <li><strong>【応答フェーズ (20秒間)】:</strong> 配信者が話した内容を解析し、2.5秒の沈黙を検知して 1回のみ短文で返答します。</li>
-          <li><strong>【待機フェーズ (20秒間)】:</strong> 配信者のトークを邪魔しないよう待機します。</li>
+          <li><strong>【応答フェーズ (20秒間)】:</strong> 配信者の発話内容を解析し、2.5秒の沈黙を検知して1回のみ短文（1〜2文）で応答します。</li>
+          <li><strong>【待機フェーズ (20秒間)】:</strong> 配信者のトークを妨げないようAIからの自発的発話を抑制し待機します。</li>
         </ul>
 
-        <h3>3. 20秒無言時の自動セリフ機能</h3>
-        <p>20 秒間沈黙した場合、<code>data2.js</code>（および <code>data.js</code>）内のセリフから自動発声します。</p>
+        <h3>3. 20秒無言時の自動発話機能</h3>
+        <p>20秒間沈黙状態が継続した場合、<code>data2.js</code> および <code>data.js</code> 内のセリフ・質問リストから自動的に話題を提供します。</p>
 
-        <h3>4. VOICEVOX 起動手順</h3>
-        <p>VOICEVOX 起動時に <code>--cors_policy_mode all</code> オプションを指定してください。</p>
+        <h3>4. VOICEVOX 起動オプション手順</h3>
+        <p>ローカル VOICEVOX エンジン起動時に必ず <code>--cors_policy_mode all</code> オプションを指定してください。指定しない場合、ブラウザのCORS制限により音声データが取得できません。</p>
 
-        <h2>📜 CREDITS & LICENSES</h2>
-        <p>In-Browser LLM Engine: @mlc-ai/web-llm (Apache 2.0)</p>
-        <p>音声合成: VOICEVOX: ナースロボ＿タイプＴ</p>
+        <h2>📜 CREDITS & LICENSES (権利表記)</h2>
+        <ul>
+          <li><strong>In-Browser LLM Engine:</strong> <a href="https://github.com/mlc-ai/web-llm" target="_blank">@mlc-ai/web-llm</a> (Apache License 2.0)</li>
+          <li><strong>AI Model:</strong> Google Gemma 2 (2B IT) - Gemma Terms of Use / License</li>
+          <li><strong>音声合成:</strong> VOICEVOX: ナースロボ＿タイプＴ (「ナースロボ＿タイプＴ」利用規約に準拠)</li>
+          <li><strong>形態素解析:</strong> Kuromoji.js (Apache License 2.0)</li>
+          <li><strong>配信者:</strong> アドル・クリスティン (Adol Christin)</li>
+          <li><strong>アシスタントキャラクター:</strong> ジェニス (Genis)</li>
+        </ul>
 
         <div style="text-align: right; margin-top: 20px;">
           <button id="close-credits-btn" class="ui-btn">CLOSE</button>
@@ -466,8 +472,8 @@
         if (!window.webLLMEngine) return null;
         const isEnglish = (currentLang === 'en');
         const systemPrompt = isEnglish
-          ? `You are "Genis", a friendly AI live stream assistant. Respond naturally in 1 or 2 short sentences.`
-          : `あなたは配信アシスタント「ジェニス」です。自然に1文または2文のみで短く応答してください。`;
+          ? `You are "Genis", a friendly AI live stream assistant for streamer Adol Christin. Respond naturally in 1 or 2 short sentences.`
+          : `あなたはアドル・クリスティンさんの配信アシスタント「ジェニス」です。自然に1文または2文のみで短く応答してください。`;
 
         try {
           const reply = await window.webLLMEngine.chat.completions.create({
@@ -553,7 +559,7 @@
 
       // VOICEVOX ＆ アバター制御
       const VOICEVOX_HOST = 'http://localhost:50021';
-      const VOICEVOX_SPEAKER_ID = 47;
+      const VOICEVOX_SPEAKER_ID = 47; // ナースロボ＿タイプＴ
 
       let isSpeaking = false;
       let currentLang = 'ja';
@@ -642,7 +648,7 @@
         if (currentVoiceAudio) { currentVoiceAudio.pause(); currentVoiceAudio.currentTime = 0; currentVoiceAudio = null; }
       }
 
-      // ★ 修正箇所: fetch から不要な targetAddressSpace オプションを削除
+      // VOICEVOX 音声生成 (安全な標準Fetch)
       async function speakWithVoicevox(text) {
         stopCurrentVoice();
         const queryRes = await fetch(`${VOICEVOX_HOST}/audio_query?speaker=${VOICEVOX_SPEAKER_ID}&text=${encodeURIComponent(text)}`, {
@@ -725,7 +731,7 @@
         runAssistantVoice(selectedText, currentLang);
       }
 
-      // 音声認識
+      // 音声認識 (SpeechRecognition)
       let isRecognitionActive = false;
       let voiceRecognition = null;
       const WebKitSpeech = window.SpeechRecognition || window.webkitSpeechRecognition;
