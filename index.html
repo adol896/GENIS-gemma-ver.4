@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Assistant "Genis" & Multi-Lang SuperChat Overlay</title>
+    <style>
+      /* ベーススタイル */
+      html, body {
+          margin: 0; padding: 0; width: 100%; height: 100%;
+          background-color: #00FF00; overflow: hidden; /* OBSのクロマキー(Green)用 */
+          font-family: 'Helvetica Neue', Arial, sans-serif; color: #ffffff;
+      }
+
+      /* [1] AI Assistant (Genis) UI */
+      #assistant-container {
+          position: absolute; bottom: -20px; left: 10px;
+          display: flex; flex-direction: column; align-items: center; z-index: 10;
+          background: transparent !important;
+      }
+      #avatar-frame {
+          width: 360px; height: 200px; overflow: hidden;
+          position: relative; background: transparent !important;
+          transition: opacity 0.3s ease;
+          display: flex; justify-content: center; align-items: center;
+      }
+      #avatar-orb {
+          width: 110px; height: 110px; border-radius: 50%;
+          background: radial-gradient(circle at 35% 35%, #ffffff, #00f3ff 45%, #0066ff 75%, #001133 100%);
+          box-shadow: 0 0 25px #00f3ff, 0 0 50px rgba(0, 243, 255, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.8);
+          position: absolute; top: 45%; left: 50%;
+          transform: translate(-50%, -50%) scale(1);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          animation: orb-idle 3s infinite ease-in-out;
+      }
+      @keyframes orb-idle {
+          0%, 100% {
+              transform: translate(-50%, -50%) scale(1);
+              box-shadow: 0 0 20px #00f3ff, 0 0 40px rgba(0, 243, 255, 0.5);
+          }
+          50% {
+              transform: translate(-50%, -50%) scale(1.06);
+              box-shadow: 0 0 35px #00f3ff, 0 0 60px rgba(0, 243, 255, 0.8);
+          }
+      }
+      #avatar-orb.speaking-pulse {
+          transform: translate(-50%, -50%) scale(1.22);
+          box-shadow: 0 0 45px #00f3ff, 0 0 85px #00f3ff, inset 0 0 25px #ffffff;
+      }
+      #ai-status-msg {
+          font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+          color: rgba(255, 255, 255, 0.7); text-shadow: 0 2px 4px rgba(0,0,0,0.9); margin-top: 4px;
+          transition: opacity 0.3s ease;
+      }
+      .controls-row {
+          display: flex; gap: 8px; margin-top: 10px; margin-bottom: 25px;
+      }
+      .ui-btn {
+          background: rgba(15, 20, 35, 0.85); border: 1px solid #00f3ff; color: #00f3ff;
+          border-radius: 4px; padding: 6px 12px; font-size: 11px; font-weight: bold;
+          letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+          transition: all 0.2s ease; pointer-events: auto;
+      }
+      .ui-btn:hover {
+          background: #00f3ff; color: #0d1117; box-shadow: 0 0 15px rgba(0, 243, 255, 0.6);
+      }
+      .element-hide { opacity: 0 !important; pointer-events: none !important; }
+
+      #ai-subtitle-box {
+          position: absolute; bottom: 75px; left: 50%; transform: translateX(-50%);
+          background: rgba(6, 10, 22, 0.85);
+          border-left: 4px solid #00f3ff; border-radius: 0 8px 8px 0;
+          padding: 14px 24px; font-size: 24px; font-weight: bold;
+          width: 520px; text-align: center; line-height: 1.4;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+          opacity: 0; transform: translate(-50%, 10px);
+          transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+          pointer-events: none; word-break: break-word; z-index: 20;
+      }
+      #ai-subtitle-box.active { opacity: 1; transform: translate(-50%, 0); }
+
+      /* [2] カットイン・スパチャ演出 UI */
+      #phrase-cutin-box {
+          position: absolute; top: 45%; left: 50%;
+          width: 90%; max-width: 600px; height: 110px;
+          display: flex; align-items: center; justify-content: center;
+          z-index: 50; pointer-events: none;
+          background: repeating-linear-gradient(90deg, #3d2314, #3d2314 4px, #2b180d 4px, #2b180d 8px),
+                      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
+          background-blend-mode: multiply;
+          border: 5px solid #1a0f08; border-radius: 4px;
+          box-shadow: 0 0 30px #ff6600, 0 0 60px #8000ff, inset 0 0 20px rgba(0, 0, 0, 0.8);
+          transform: translate(100vw, -50%) skewX(-10deg); opacity: 0; transition: none;
+      }
+      #phrase-cutin-box.slide-in {
+          opacity: 1; transform: translate(-50%, -50%) skewX(-10deg);
+          transition: transform 0.25s cubic-bezier(0.075, 0.82, 0.165, 1), opacity 0.15s ease-out;
+      }
+      #phrase-cutin-box.slide-out {
+          opacity: 0; transform: translate(-150vw, -50%) skewX(-10deg);
+          transition: transform 0.2s ease-in, opacity 0.15s ease-in;
+      }
+      #phrase-text-content {
+          font-size: 38px; font-weight: 900; font-family: 'Impact', 'Arial Black', sans-serif;
+          letter-spacing: 6px; color: #ff9900; text-shadow: 0 0 8px #000, 0 0 20px #8000ff, 2px 2px 2px #3a0000;
+      }
+      @media (min-width: 768px) {
+          #phrase-text-content { font-size: 58px; letter-spacing: 10px; }
+      }
+
+      #sc-popup-box {
+          position: absolute; top: 45%; left: 50%;
+          transform: translate(-50%, -30%);
+          background: linear-gradient(135deg, #ff4e50, #f9d423);
+          border: 4px solid #ffffff; border-radius: 16px;
+          padding: 14px 28px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 40px rgba(255, 215, 0, 0.8);
+          z-index: 60; pointer-events: none; opacity: 0;
+          box-sizing: border-box; max-width: 85%;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+      }
+      #sc-popup-box.show {
+          transform: translate(-50%, -50%); opacity: 1;
+      }
+      #sc-text-content {
+          font-size: 26px; font-weight: 900; color: #ffffff;
+          text-shadow: 2px 2px 6px rgba(0,0,0,0.5), 0 0 10px rgba(255,255,255,0.4);
+          white-space: nowrap; text-align: center;
+      }
+      @media (min-width: 768px) {
+          #sc-popup-box { padding: 22px 45px; border-width: 5px; }
+          #sc-text-content { font-size: 42px; }
+      }
+
+      #canvas-confetti {
+          position: absolute; top: 0; left: 0;
+          width: 100%; height: 100%; z-index: 70; pointer-events: none;
+      }
+
+      /* クレジット・説明表示用モーダル */
+      .modal-overlay {
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex; justify-content: center; align-items: center;
+          z-index: 100; opacity: 0; pointer-events: none;
+          transition: opacity 0.3s ease;
+      }
+      .modal-overlay.show {
+          opacity: 1; pointer-events: auto;
+      }
+      .modal-content {
+          background: #0f1423; border: 1px solid #00f3ff; border-radius: 8px;
+          padding: 24px; width: 85%; max-width: 580px; max-height: 80vh;
+          overflow-y: auto; color: #ffffff; box-shadow: 0 0 25px rgba(0, 243, 255, 0.4);
+          font-size: 12px; line-height: 1.6;
+      }
+      .modal-content h2 { 
+          font-size: 15px; color: #00f3ff; margin-top: 20px; border-bottom: 1px solid #00f3ff; 
+          padding-bottom: 4px; letter-spacing: 1px;
+      }
+      .modal-content h2:first-child { margin-top: 0; }
+      .modal-content h3 { font-size: 13px; margin: 12px 0 4px 0; color: #ff9900; }
+      .modal-content p { margin: 6px 0; }
+      .modal-content ul { margin: 6px 0; padding-left: 20px; }
+      .modal-content li { margin-bottom: 4px; }
+      .modal-content code { background: rgba(0,243,255,0.15); color: #00f3ff; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+      .modal-content a { color: #00f3ff; text-decoration: underline; }
+      .modal-content pre { background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 10px; color: #aaa; }
+    </style>
+
+    <!-- データファイルの読み込み -->
+    <script src="data.js"></script>
+    <script src="data2.js"></script>
+    <script src="kuromoji.js"></script>
+  </head>
+  <body>
+    <!-- 紙吹雪用キャンバス -->
+    <canvas id="canvas-confetti"></canvas>
+
+    <!-- AI アバター ＆ 操作UI -->
+    <div id="assistant-container">
+      <div id="avatar-frame">
+        <div id="avatar-orb"></div>
+      </div>
+      <div id="ai-status-msg">MUTED</div>
+      <div class="controls-row">
+        <button id="toggle-lang-btn" class="ui-btn">LANG: JA</button>
+        <button id="toggle-avatar-btn" class="ui-btn">AVATAR HIDE</button>
+        <button id="toggle-credits-btn" class="ui-btn">CREDITS & GUIDE</button>
+      </div>
+    </div>
+
+    <!-- AI 字幕ボックス -->
+    <div id="ai-subtitle-box">...</div>
+
+    <!-- 通常ワードカットイン -->
+    <div id="phrase-cutin-box">
+      <div id="phrase-text-content"></div>
+    </div>
+
+    <!-- スパチャポップアップ -->
+    <div id="sc-popup-box">
+      <div id="sc-text-content">ありがとうございます！</div>
+    </div>
+
+    <!-- 使い方 ＆ クレジット表示用モーダル -->
+    <div id="credits-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h2>📖 使い方 ＆ VOICEVOX 起動手順マニュアル</h2>
+        
+        <h3>1. GitHub Pages 経由で動作させる場合（推奨設定）</h3>
+        <p>GitHub Pages などの外部 Web サイト（<code>https://</code>）からローカルの VOICEVOX（<code>http://localhost:50021</code>）へ通信するため、CORS 制限許可フラグを付与して起動します。</p>
+        <ul>
+          <li><strong>ショートカット起動（おすすめ）:</strong> VOICEVOX インストール先の <code>vv-engine</code> フォルダ内にある <code>run.exe</code>（または <code>voicevox_engine.exe</code>）のショートカットを作成し、右クリック ➔ 「プロパティ」を開きます。「リンク先」の末尾に半角スペースを入れて <code>--cors_policy_mode all</code> を追記して起動します。</li>
+          <li><strong>コマンドプロンプト起動:</strong> 該当フォルダでターミナルを開き、<code>run.exe --cors_policy_mode all</code> を直接実行します。</li>
+        </ul>
+
+        <h3>2. OBS ブラウザソースで読み込む場合（ローカル起動）</h3>
+        <ul>
+          <li>OBS のソース追加で「ブラウザ」を選択し、<strong>「ローカルファイル」</strong> にチェックを入れて PC 内の <code>index.html</code> を直接読み込ませます。（※ローカル起動の場合は CORS 許可オプションなしでも機能します）</li>
+        </ul>
+
+        <h3>3. 基本操作 ＆ 音声コマンド一覧</h3>
+        <ul>
+          <li><strong>初期起動・アンロック:</strong> 画面を 1 回クリックしてブラウザの音声制限を解除します。</li>
+          <li><strong>会話の再開:</strong> 「話そうぜ」「喋ってくれ」「再開」「いいよ」など</li>
+          <li><strong>一時停止 (MUTED):</strong> 「静かにして」「黙って」「喋るのやめて」など</li>
+          <li><strong>Wikipedia 検索機能:</strong> 「〇〇について調べて」「〇〇を調べて」と発声</li>
+          <li><strong>スパチャ演出:</strong> 「スパチャ」「スーパーチャット」「感謝」など</li>
+          <li><strong>カットイン演出:</strong> 「ここだ」「ここで決める」など</li>
+        </ul>
+
+        <h2>📜 CREDITS & LICENSES</h2>
+
+        <h3>VOICEVOX</h3>
+        <p>音声合成: <a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener">VOICEVOX: ナースロボ＿タイプＴ</a></p>
+        <p>キャラクターデザイン・音声: ナースロボ＿タイプＴ (規約に準拠して使用しています)</p>
+        
+        <h3>kuromoji.js & IPADIC</h3>
+        <p>JavaScript port of Kuromoji Japanese morphological analyzer.</p>
+        <p>Copyright (c) 2014 Takuya Asano</p>
+        <p>Licensed under the Apache License, Version 2.0 (the "License");</p>
+        <pre>
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        </pre>
+        <p>Dictionary data powered by IPADIC (Copyright 1999-2007 Information-technology Promotion Agency, Japan).</p>
+
+        <h3>Wikipedia Content & API</h3>
+        <p>Information retrieval features use the <a href="https://www.wikipedia.org/" target="_blank" rel="noopener">Wikipedia API</a>.</p>
+        <p>Text fetched from Wikipedia is available under the <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)</a>.</p>
+
+        <h3>Sound Effects</h3>
+        <p>Audio File: <code>剣を抜く.mp3</code></p>
+        <p>Sound effect provided by [ 効果音ラボ ].</p>
+
+        <div style="text-align: right; margin-top: 20px;">
+          <button id="close-credits-btn" class="ui-btn">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // =========================================================
+      // Kuromoji 初期化
+      // =========================================================
+      let tokenizerInstance = null;
+
+      if (typeof kuromoji !== 'undefined') {
+        kuromoji.builder({ dicPath: "./dict/" }).build((err, tokenizer) => {
+          if (err) {
+            console.error("Kuromoji 辞書のロードに失敗しました:", err);
+            return;
+          }
+          tokenizerInstance = tokenizer;
+          console.log("Kuromoji 辞書のロードが完了しました！");
+        });
+      }
+
+      // =========================================================
+      // クレジットモーダルの制御
+      // =========================================================
+      const creditsModal = document.getElementById('credits-modal');
+      const toggleCreditsBtn = document.getElementById('toggle-credits-btn');
+      const closeCreditsBtn = document.getElementById('close-credits-btn');
+
+      toggleCreditsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        creditsModal.classList.add('show');
+      });
+
+      closeCreditsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        creditsModal.classList.remove('show');
+      });
+
+      creditsModal.addEventListener('click', (e) => {
+        if (e.target === creditsModal) {
+          creditsModal.classList.remove('show');
+        }
+      });
+
+      // =========================================================
+      // データの統合処理 (data.js と data2.js をマージ)
+      // =========================================================
+      const rawData1 = window.AIData1 || window.AIData || {};
+      const rawData2 = window.AIData2 || {};
+
+      const aiData = {
+        patternDict: {
+          ja: [...(rawData1.patternDict?.ja || []), ...(rawData2.patternDict?.ja || [])],
+          en: [...(rawData1.patternDict?.en || []), ...(rawData2.patternDict?.en || [])]
+        },
+        oncePhrases: {
+          ja: [...(rawData1.oncePhrases?.ja || []), ...(rawData2.oncePhrases?.ja || [])],
+          en: [...(rawData1.oncePhrases?.en || []), ...(rawData2.oncePhrases?.en || [])]
+        },
+        loopPhrases: {
+          ja: [...(rawData1.loopPhrases?.ja || []), ...(rawData2.loopPhrases?.ja || [])],
+          en: [...(rawData1.loopPhrases?.en || []), ...(rawData2.loopPhrases?.en || [])]
+        },
+        silencePhrases: {
+          ja: [...(rawData1.silencePhrases?.ja || []), ...(rawData2.silencePhrases?.ja || [])],
+          en: [...(rawData1.silencePhrases?.en || []), ...(rawData2.silencePhrases?.en || [])]
+        }
+      };
+
+      const defaultOncePhrases = {
+        ja: [
+          "この1週間の中で、一番「美味しかったなぁ」って思った食べ物は何ですか？",
+          "ここ1ヶ月の間で、買って良かった便利グッズやアイテムって何かありましたか？",
+          "最近コンビニやスーパーで見かけて、つい買っちゃった新商品ってありますか？"
+        ],
+        en: [
+          "What was the best food you ate this past week?",
+          "Have you bought anything really useful or fun in the last month?"
+        ]
+      };
+
+      const defaultLoopPhrases = {
+        ja: [
+          "いい雰囲気ですね。このまったりした空気、とても落ち着きます。",
+          "画面の向こうの皆さんも、お茶でも飲みながらのんびり見ていってくださいね。",
+          "今日もマイペースに楽しんでいきましょう。"
+        ],
+        en: [
+          "I really love this relaxed atmosphere. It's so cozy here.",
+          "Feel free to grab a drink and get comfortable, everyone!"
+        ]
+      };
+
+      const oncePhrases = {
+        ja: aiData.oncePhrases.ja.length > 0 ? aiData.oncePhrases.ja : defaultOncePhrases.ja,
+        en: aiData.oncePhrases.en.length > 0 ? aiData.oncePhrases.en : defaultOncePhrases.en
+      };
+
+      const loopPhrases = {
+        ja: aiData.loopPhrases.ja.length > 0 ? aiData.loopPhrases.ja : defaultLoopPhrases.ja,
+        en: aiData.loopPhrases.en.length > 0 ? aiData.loopPhrases.en : defaultLoopPhrases.en
+      };
+
+      // =========================================================
+      // 言語別 設定定義
+      // =========================================================
+      const langConfig = {
+        ja: {
+          recognitionLang: 'ja-JP',
+          scDefaultText: "ありがとうございます！",
+          scKeywords: ["スパチャ", "スーパーチャット", "ありがとうございまーす", "ありがとうございます", "感謝"],
+          cutInRules: [
+            { keywords: ["ここだ"], text: "ここだ！" },
+            { keywords: ["ここで決める", "これで決める"], text: "これで決める！" }
+          ]
+        },
+        en: {
+          recognitionLang: 'en-US',
+          scDefaultText: "THANK YOU SO MUCH!",
+          scKeywords: ["super chat", "superchat", "thank you", "thanks for the support", "thanks"],
+          cutInRules: [
+            { keywords: ["this is it", "here goes", "now"], text: "THIS IS IT!" },
+            { keywords: ["finish this", "let's do this", "take this"], text: "LET'S DO THIS!" }
+          ]
+        }
+      };
+
+      // =========================================================
+      // 音声・効果音（SE）の設定
+      // =========================================================
+      const sePlayer = new Audio('./' + encodeURIComponent("剣を抜く.mp3"));
+      sePlayer.volume = 0.7;
+
+      let isAudioUnlocked = false;
+
+      function unlockAudio() {
+        if (isAudioUnlocked) return;
+
+        sePlayer.volume = 0;
+        sePlayer.play().then(() => {
+          sePlayer.pause();
+          sePlayer.currentTime = 0;
+          sePlayer.volume = 0.7;
+          isAudioUnlocked = true;
+          console.log("SE のオーディオ再生制限を解除しました。");
+        }).catch((err) => {
+          console.warn("オーディオアンロック失敗:", err);
+        });
+      }
+
+      function playSuperChatSynthSE() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+
+        const ctx = new AudioContext();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+        const masterGain = ctx.createGain();
+        masterGain.gain.setValueAtTime(1.6, now);
+        masterGain.connect(ctx.destination);
+
+        const bellFreqs = [523.25, 659.25, 783.99, 1046.5];
+        bellFreqs.forEach((freq, index) => {
+          const timeOffset = index * 0.05;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = index % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freq, now + timeOffset);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.2, now + timeOffset + 0.5);
+
+          gain.gain.setValueAtTime(0.35, now + timeOffset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.5);
+
+          osc.connect(gain);
+          gain.connect(masterGain);
+
+          osc.start(now + timeOffset);
+          osc.stop(now + timeOffset + 0.55);
+        });
+
+        const bufferSize = ctx.sampleRate * 0.4;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+
+        const crackerNoise = ctx.createBufferSource();
+        crackerNoise.buffer = buffer;
+
+        const crackerFilter = ctx.createBiquadFilter();
+        crackerFilter.type = 'bandpass';
+        crackerFilter.frequency.setValueAtTime(1800, now);
+
+        const crackerGain = ctx.createGain();
+        crackerGain.gain.setValueAtTime(0.8, now);
+        crackerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        crackerNoise.connect(crackerFilter);
+        crackerFilter.connect(crackerGain);
+        crackerGain.connect(masterGain);
+
+        const crackerThump = ctx.createOscillator();
+        const thumpGain = ctx.createGain();
+        crackerThump.type = 'triangle';
+        crackerThump.frequency.setValueAtTime(250, now);
+        crackerThump.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        thumpGain.gain.setValueAtTime(0.6, now);
+        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        crackerThump.connect(thumpGain);
+        thumpGain.connect(masterGain);
+
+        crackerNoise.start(now);
+        crackerThump.start(now);
+        crackerNoise.stop(now + 0.4);
+        crackerThump.stop(now + 0.4);
+
+        const cymbalFreqs = [312, 520, 630, 810, 1150, 1400];
+        cymbalFreqs.forEach(f => {
+          const osc = ctx.createOscillator();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(f, now);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(7500, now);
+
+          const cymbalGain = ctx.createGain();
+          cymbalGain.gain.setValueAtTime(0.25, now);
+          cymbalGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+          osc.connect(filter);
+          filter.connect(cymbalGain);
+          cymbalGain.connect(masterGain);
+
+          osc.start(now);
+          osc.stop(now + 1.3);
+        });
+
+        const cymbalNoise = ctx.createBufferSource();
+        cymbalNoise.buffer = buffer;
+        const cymbalNoiseFilter = ctx.createBiquadFilter();
+        cymbalNoiseFilter.type = 'highpass';
+        cymbalNoiseFilter.frequency.setValueAtTime(8500, now);
+
+        const cymbalNoiseGain = ctx.createGain();
+        cymbalNoiseGain.gain.setValueAtTime(0.35, now);
+        cymbalNoiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+
+        cymbalNoise.connect(cymbalNoiseFilter);
+        cymbalNoiseFilter.connect(cymbalNoiseGain);
+        cymbalNoiseGain.connect(masterGain);
+
+        cymbalNoise.start(now);
+        cymbalNoise.stop(now + 1.1);
+      }
+
+      // =========================================================
+      // 強制停止モード・権限確認の管理フラグ
+      // =========================================================
+      let isForceMuted = true;
+      let isWaitingPermissionResponse = false;
+
+      // =========================================================
+      // 20秒無言検知・自動トーク機能
+      // =========================================================
+      let silenceTimer = null;
+      const SILENCE_LIMIT = 20 * 1000;
+
+      function resetSilenceTimer() {
+        if (isForceMuted) return;
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(triggerSilenceTalk, SILENCE_LIMIT);
+      }
+
+      function stopSilenceTimer() {
+        if (silenceTimer) clearTimeout(silenceTimer);
+      }
+
+      function triggerSilenceTalk() {
+        if (isForceMuted || isSpeaking) {
+          resetSilenceTimer();
+          return;
+        }
+
+        isAutomaticTalk = true;
+        const silenceList = aiData.silencePhrases?.[currentLang] || [];
+
+        if (silenceList.length > 0 && Math.random() < 0.5) {
+          const randomIndex = Math.floor(Math.random() * silenceList.length);
+          runAssistantVoice(silenceList[randomIndex], currentLang);
+        } else {
+          const nextText = getNextText();
+          if (nextText) {
+            runAssistantVoice(nextText, currentLang);
+          }
+        }
+      }
+
+      // =========================================================
+      // カットイン ＆ スパチャ演出 ＆ 紙吹雪機能
+      // =========================================================
+      async function executePhraseCutIn(text) {
+        if (isForceMuted) return;
+        const cutInBox = document.getElementById('phrase-cutin-box');
+        const cutInText = document.getElementById('phrase-text-content');
+
+        cutInText.innerText = text;
+
+        cutInBox.classList.remove('slide-in', 'slide-out');
+        void cutInBox.offsetWidth;
+
+        cutInBox.classList.add('slide-in');
+
+        try {
+          sePlayer.currentTime = 0;
+          await sePlayer.play();
+        } catch (audioErr) {
+          console.warn("SE再生エラー:", audioErr);
+        }
+
+        setTimeout(() => {
+          cutInBox.classList.remove('slide-in');
+          cutInBox.classList.add('slide-out');
+
+          setTimeout(() => {
+            cutInBox.classList.remove('slide-out');
+          }, 300);
+        }, 3000);
+      }
+
+      function triggerSuperChatEffects() {
+        if (isForceMuted) return;
+        const scBox = document.getElementById('sc-popup-box');
+        scBox.classList.add('show');
+
+        fireConfetti();
+
+        setTimeout(() => {
+          playSuperChatSynthSE();
+        }, 50);
+
+        setTimeout(() => {
+          scBox.classList.remove('show');
+        }, 4000);
+      }
+
+      const canvas = document.getElementById('canvas-confetti');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      });
+
+      let particles = [];
+      let animatingConfetti = false;
+
+      function fireConfetti() {
+        const colors = ['#ff4e50', '#f9d423', '#00f3ff', '#ffffff', '#ff00ff'];
+        particles = [];
+        for (let i = 0; i < 120; i++) {
+          particles.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2 + 50,
+            r: Math.random() * 6 + 4,
+            dx: Math.random() * 30 - 15,
+            dy: Math.random() * -20 - 10,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.floor(Math.random() * 10) - 10,
+            tiltAngle: 0,
+            tiltAngleInc: (Math.random() * 0.07) + 0.05
+          });
+        }
+        if (!animatingConfetti) animateConfetti();
+      }
+
+      function animateConfetti() {
+        animatingConfetti = true;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach((p, index) => {
+          p.tiltAngle += p.tiltAngleInc;
+          p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
+          p.x += Math.sin(p.tiltAngle) * 2;
+          p.dy += 0.4;
+          p.x += p.dx;
+          p.y += p.dy;
+
+          ctx.beginPath();
+          ctx.lineWidth = p.r;
+          ctx.strokeStyle = p.color;
+          ctx.moveTo(p.x + p.tilt + p.r, p.y);
+          ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+          ctx.stroke();
+
+          if (p.y > canvas.height) {
+            particles.splice(index, 1);
+          }
+        });
+
+        if (particles.length > 0) {
+          requestAnimationFrame(animateConfetti);
+        } else {
+          animatingConfetti = false;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      // =========================================================
+      // AI Assistant "Genis" (VOICEVOX 音声合成 ＆ アバター制御)
+      // =========================================================
+      // VOICEVOX の設定
+      const VOICEVOX_HOST = 'http://localhost:50021';
+      // スピーカーID: ナースロボ＿タイプＴ (47:ノーマル, 48:楽々, 49:恐怖, 50:内緒話)
+      const VOICEVOX_SPEAKER_ID = 47;
+
+      let isSpeaking = false;
+      let currentLang = 'ja';
+      let currentVoiceAudio = null;
+
+      let isEchoWikiLocked = false;
+      let isAutomaticTalk = false;
+
+      const avatarOrb = document.getElementById('avatar-orb');
+      const aiStatusMsg = document.getElementById('ai-status-msg');
+      const aiSubtitleBox = document.getElementById('ai-subtitle-box');
+      const toggleBtn = document.getElementById('toggle-avatar-btn');
+      const toggleLangBtn = document.getElementById('toggle-lang-btn');
+      const avatarFrame = document.getElementById('avatar-frame');
+
+      let orbPulseInterval = null;
+      const currentLoopDecks = { ja: [], en: [] };
+      const ONCE_PHRASE_CHANCE = 0.3;
+
+      function shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+      function getNextText() {
+        const lang = currentLang;
+        const hasOnce = oncePhrases[lang] && oncePhrases[lang].length > 0;
+        const rollChance = Math.random() < ONCE_PHRASE_CHANCE;
+
+        if (hasOnce && rollChance) {
+          const index = Math.floor(Math.random() * oncePhrases[lang].length);
+          const selectedText = oncePhrases[lang][index];
+          oncePhrases[lang].splice(index, 1);
+          return selectedText;
+        }
+
+        if (currentLoopDecks[lang].length === 0) {
+          currentLoopDecks[lang] = shuffleArray(loopPhrases[lang]);
+        }
+
+        return currentLoopDecks[lang].pop();
+      }
+
+      toggleLangBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        unlockAudio();
+        if (currentLang === 'ja') {
+          currentLang = 'en';
+          toggleLangBtn.innerText = "LANG: EN";
+        } else {
+          currentLang = 'ja';
+          toggleLangBtn.innerText = "LANG: JA";
+        }
+        document.getElementById('sc-text-content').innerText = langConfig[currentLang].scDefaultText;
+        updateSpeechRecognitionLang();
+      });
+
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        unlockAudio();
+        const isHidden = avatarFrame.classList.toggle('element-hide');
+        aiStatusMsg.classList.toggle('element-hide');
+        toggleBtn.innerText = isHidden ? "AVATAR SHOW" : "AVATAR HIDE";
+      });
+
+      function updateAvatarState() {
+        clearInterval(orbPulseInterval);
+        if (isSpeaking) {
+          let isHighGlow = false;
+          orbPulseInterval = setInterval(() => {
+            isHighGlow = !isHighGlow;
+            if (isHighGlow) {
+              avatarOrb.classList.add('speaking-pulse');
+            } else {
+              avatarOrb.classList.remove('speaking-pulse');
+            }
+          }, 160);
+        } else {
+          avatarOrb.classList.remove('speaking-pulse');
+        }
+      }
+
+      function splitTextForGenis(text, lang) {
+        const chunks = [];
+        const isEnglish = (lang === 'en');
+        const maxLength = isEnglish ? 45 : 20;
+
+        let current = "";
+        for (let i = 0; i < text.length; i++) {
+          current += text[i];
+          const char = text[i];
+          const isBreakChar = (char === "、" || char === "。" || char === "！" || char === "？" || char === "," || char === "." || char === "!" || char === "?");
+
+          if (current.length >= maxLength || isBreakChar) {
+            chunks.push(current.trim());
+            current = "";
+          }
+        }
+        if (current) chunks.push(current.trim());
+        return chunks.filter(c => c.length > 0);
+      }
+
+      function stopCurrentVoice() {
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+        if (currentVoiceAudio) {
+          currentVoiceAudio.pause();
+          currentVoiceAudio.currentTime = 0;
+          currentVoiceAudio = null;
+        }
+      }
+
+      async function speakWithVoicevox(text) {
+        stopCurrentVoice();
+        
+        const queryRes = await fetch(`${VOICEVOX_HOST}/audio_query?speaker=${VOICEVOX_SPEAKER_ID}&text=${encodeURIComponent(text)}`, {
+          method: 'POST'
+        });
+        if (!queryRes.ok) throw new Error("VOICEVOX audio_query エラー");
+        const queryData = await queryRes.json();
+
+        const synthRes = await fetch(`${VOICEVOX_HOST}/synthesis?speaker=${VOICEVOX_SPEAKER_ID}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(queryData)
+        });
+        if (!synthRes.ok) throw new Error("VOICEVOX synthesis エラー");
+
+        const audioBlob = await synthRes.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        currentVoiceAudio = audio;
+
+        return new Promise((resolve, reject) => {
+          audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentVoiceAudio = null;
+            resolve();
+          };
+          audio.onerror = (e) => {
+            URL.revokeObjectURL(audioUrl);
+            currentVoiceAudio = null;
+            reject(e);
+          };
+          audio.play().catch(reject);
+        });
+      }
+
+      function speakWithWebSpeech(text, lang) {
+        return new Promise((resolve) => {
+          stopCurrentVoice();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = (lang === 'en') ? 'en-US' : 'ja-JP';
+          utterance.rate = (lang === 'en') ? 1.05 : 1.15;
+          utterance.pitch = (lang === 'en') ? 1.15 : 1.35;
+          
+          utterance.onend = () => resolve();
+          utterance.onerror = () => resolve();
+          
+          window.speechSynthesis.speak(utterance);
+        });
+      }
+
+      async function runAssistantVoice(fullText, lang, suppressSilenceRestart = false, bypassMute = false) {
+        stopCurrentVoice();
+
+        const textForSpeech = fullText.replace(/（[^）]*）|\([^)]*\)/g, '').trim();
+
+        const subtitleChunks = splitTextForGenis(fullText, lang);
+        const speechChunks = splitTextForGenis(textForSpeech, lang);
+
+        const maxChunks = Math.max(subtitleChunks.length, speechChunks.length);
+
+        isSpeaking = true;
+        stopSilenceTimer();
+        updateAvatarState();
+        aiStatusMsg.innerText = "TALKING";
+
+        for (let i = 0; i < maxChunks; i++) {
+          if (i < subtitleChunks.length) {
+            aiSubtitleBox.classList.remove('active');
+            await new Promise(r => setTimeout(r, 150));
+            aiSubtitleBox.innerText = subtitleChunks[i] || "";
+            aiSubtitleBox.classList.add('active');
+          }
+
+          if (i < speechChunks.length) {
+            const speechText = speechChunks[i];
+            if (lang === 'ja') {
+              try {
+                await speakWithVoicevox(speechText);
+              } catch (err) {
+                console.warn("VOICEVOX接続失敗のため、ブラウザ標準音声を使用します:", err);
+                await speakWithWebSpeech(speechText, lang);
+              }
+            } else {
+              await speakWithWebSpeech(speechText, lang);
+            }
+          } else {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+
+        isSpeaking = false;
+        if (!suppressSilenceRestart && !isForceMuted) {
+          resetSilenceTimer();
+        }
+        updateAvatarState();
+        aiStatusMsg.innerText = isForceMuted ? "MUTED" : "STANDBY";
+        aiSubtitleBox.classList.remove('active');
+
+        if (isAutomaticTalk) {
+          isEchoWikiLocked = false;
+          isAutomaticTalk = false;
+        }
+
+        safeStartRecognition();
+      }
+
+      function triggerTalk() {
+        if (isForceMuted || isSpeaking) return;
+        isAutomaticTalk = true;
+        const selectedText = getNextText();
+        runAssistantVoice(selectedText, currentLang);
+      }
+
+      const TALK_INTERVAL = 2 * 60 * 1000;
+      let talkIntervalId = null;
+
+      function resetTalkInterval() {
+        if (talkIntervalId) clearInterval(talkIntervalId);
+        talkIntervalId = setInterval(() => { triggerTalk(); }, TALK_INTERVAL);
+      }
+
+      let initialPermissionTimer = null;
+      function startInitialPermissionTimer() {
+        if (initialPermissionTimer) clearTimeout(initialPermissionTimer);
+        initialPermissionTimer = setTimeout(() => {
+          if (isForceMuted) {
+            isWaitingPermissionResponse = true;
+            aiStatusMsg.innerText = "WAITING";
+            const promptText = (currentLang === 'en') ? "May I speak to you now?" : "話しかけてもいいですか？";
+            runAssistantVoice(promptText, currentLang, true, true);
+          }
+        }, 2 * 60 * 1000);
+      }
+
+      startInitialPermissionTimer();
+
+      // =========================================================
+      // Wikipedia 連携・音声認識拡張機能
+      // =========================================================
+      let isRecognitionActive = false;
+      let voiceRecognition = null;
+
+      let isWaitingWikiChoice = false;
+      let pendingWikiSummary = null;
+      let pendingWikiTitle = "";
+
+      async function fetchWikipediaSummary(title) {
+        const url = `https://ja.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          const pages = data.query.pages;
+          const pageId = Object.keys(pages)[0];
+          if (pageId !== "-1" && pages[pageId].extract) {
+            let extract = pages[pageId].extract;
+            if (extract.length > 150) {
+              extract = extract.substring(0, 150) + "…";
+            }
+            return extract;
+          }
+          return null;
+        } catch (e) {
+          console.warn("Wikipedia API エラー:", e);
+          return null;
+        }
+      }
+
+      const WebKitSpeech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (WebKitSpeech) {
+        voiceRecognition = new WebKitSpeech();
+        voiceRecognition.continuous = true;
+        voiceRecognition.interimResults = false;
+
+        voiceRecognition.onstart = () => {
+          isRecognitionActive = true;
+          console.log("音声認識が開始されました。");
+        };
+
+        voiceRecognition.onend = () => {
+          isRecognitionActive = false;
+          console.log("音声認識が停止しました。");
+        };
+
+        voiceRecognition.onerror = (e) => {
+          isRecognitionActive = false;
+          console.warn("音声認識エラー:", e.error);
+        };
+
+        voiceRecognition.onresult = (event) => {
+          const currentIndex = event.resultIndex;
+          const heardPhrase = event.results[currentIndex][0].transcript.trim().toLowerCase();
+          const config = langConfig[currentLang];
+
+          console.log("認識した言葉:", heardPhrase);
+
+          let tokenSurfaces = [];
+          if (tokenizerInstance) {
+            const tokens = tokenizerInstance.tokenize(heardPhrase);
+            tokenSurfaces = tokens.map(t => t.surface_form);
+            console.log("形態素解析単語リスト:", tokenSurfaces);
+          }
+
+          // 「話しかけてもいいですか？」への返答待ち
+          if (isForceMuted && isWaitingPermissionResponse) {
+            const isYes = ["はい", "いいよ", "どうぞ", "話して", "喋って", "ok", "yes"].some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+            const isNoOrYet = ["いいえ", "まだ", "ダメ", "だめ", "しばらく", "no", "not yet"].some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+
+            if (isYes) {
+              isForceMuted = false;
+              isWaitingPermissionResponse = false;
+              stopSilenceTimer();
+              resetSilenceTimer();
+              resetTalkInterval();
+              aiStatusMsg.innerText = "STANDBY";
+              runAssistantVoice("分かりました！お話ししましょう。", currentLang);
+              return;
+            } else if (isNoOrYet) {
+              isWaitingPermissionResponse = false;
+              runAssistantVoice("わかりました。ではまた後ほど聞いてみますね。", currentLang, true);
+              startInitialPermissionTimer();
+              return;
+            }
+          }
+
+          // 一般的な解除キーワードの判定
+          const resumeKeywords = ["話そうぜ", "喋ってくれ", "一旦喋ってくれ", "いいよ", "もういいよ", "再開", "おしゃべり再開", "話して"];
+          const isResumeRequested = resumeKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+          if (isForceMuted && isResumeRequested) {
+            isForceMuted = false;
+            isWaitingPermissionResponse = false;
+            stopSilenceTimer();
+            resetSilenceTimer();
+            resetTalkInterval();
+            aiStatusMsg.innerText = "STANDBY";
+            runAssistantVoice("おっ、分かりました！またお話ししましょう。", currentLang);
+            return;
+          }
+
+          if (isForceMuted) {
+            return;
+          }
+
+          resetSilenceTimer();
+
+          // 停止（静寂）キーワードの判定
+          const quietKeywords = [
+            "今話さなくていいよ", "今話さなくていい", "今は喋んなくていい", "しゃべんなくていい", 
+            "喋らなくていい", "喋るな", "一旦黙れ", "一旦喋るのやめてくれ", "喋るのやめて", 
+            "黙って", "静かにして", "静かに", "ちょっと黙って"
+          ];
+          const isQuietRequested = quietKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+          if (isQuietRequested) {
+            isForceMuted = true;
+            if (voiceRecognition && isRecognitionActive) voiceRecognition.stop();
+            stopSilenceTimer();
+            aiStatusMsg.innerText = "MUTED";
+            runAssistantVoice("はい、静かにします。", currentLang, true);
+            startInitialPermissionTimer();
+            return;
+          }
+
+          // 1. スパチャ判定
+          const isSC = config.scKeywords.some(keyword =>
+            heardPhrase.includes(keyword.toLowerCase()) || tokenSurfaces.includes(keyword.toLowerCase())
+          );
+          if (isSC) {
+            triggerSuperChatEffects();
+            return;
+          }
+
+          // 2. カットイン判定
+          for (const rule of config.cutInRules) {
+            const matched = rule.keywords.some(kw =>
+              heardPhrase.includes(kw.toLowerCase()) || tokenSurfaces.includes(kw.toLowerCase())
+            );
+            if (matched) {
+              executePhraseCutIn(rule.text);
+              return;
+            }
+          }
+
+          // 3. AI辞書（patternDict）のキーワード反応チェック
+          const patterns = aiData.patternDict?.[currentLang] || [];
+          for (const item of patterns) {
+            const regex = new RegExp(item.pattern, "i");
+            if (regex.test(heardPhrase)) {
+              const responses = item.responses;
+              if (responses && responses.length > 0) {
+                const randomResp = responses[Math.floor(Math.random() * responses.length)];
+                runAssistantVoice(randomResp, currentLang);
+                return;
+              }
+            }
+          }
+
+          // 4. 「〜について調べて」「〜を調べて」の明示的な指示の判定
+          const searchMatch = heardPhrase.match(/(.+)について調べて|(.+)を調べて/);
+          if (searchMatch) {
+            const targetWord = (searchMatch[1] || searchMatch[2]).trim();
+            if (targetWord) {
+              if (voiceRecognition && isRecognitionActive) {
+                voiceRecognition.stop();
+              }
+              fetchWikipediaSummary(targetWord).then(summary => {
+                if (summary) {
+                  runAssistantVoice(`${targetWord}についてですね。調べましたよ。 ${summary}`, currentLang);
+                } else {
+                  runAssistantVoice(`${targetWord}について調べてみましたが、詳細な情報は見つかりませんでした。`, currentLang);
+                }
+              });
+              return;
+            }
+          }
+
+          // 5. Wikipedia結果の選択待ち判定
+          if (isWaitingWikiChoice) {
+            const yesKeywords = ["はい", "お願いします", "聞いて", "おねがい", "ききたい", "yes", "sure", "ok"];
+            const noKeywords = ["いいえ", "結構", "やめとく", "いらない", "いいです", "no", "not now"];
+
+            const isYes = yesKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+            const isNo = noKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw));
+
+            if (isYes) {
+              isWaitingWikiChoice = false;
+              const replyText = `${pendingWikiTitle}についてですね。 ${pendingWikiSummary}`;
+              pendingWikiSummary = null;
+              pendingWikiTitle = "";
+              if (voiceRecognition && isRecognitionActive) voiceRecognition.stop();
+              runAssistantVoice(replyText, currentLang);
+              return;
+            } else if (isNo) {
+              isWaitingWikiChoice = false;
+              pendingWikiSummary = null;
+              pendingWikiTitle = "";
+              if (voiceRecognition && isRecognitionActive) voiceRecognition.stop();
+              runAssistantVoice("わかりました。", currentLang);
+              return;
+            }
+          }
+
+          // 6. 名詞をとらえて復唱 ＆ Wikipedia調査・自動提案機能
+          if (tokenizerInstance && !isWaitingWikiChoice && !isEchoWikiLocked) {
+            const tokens = tokenizerInstance.tokenize(heardPhrase);
+
+            const validNouns = tokens.filter(t => {
+              return t.pos === "名詞" &&
+                     t.pos_detail_1 !== "代名詞" &&
+                     t.pos_detail_1 !== "非自立" &&
+                     t.pos_detail_1 !== "数" &&
+                     t.pos_detail_1 !== "接尾";
+            });
+
+            if (validNouns.length > 0) {
+              const targetWord = validNouns[validNouns.length - 1].surface_form;
+              pendingWikiTitle = targetWord;
+
+              const echoTemplates = [
+                `${targetWord}、ですね。`,
+                `${targetWord}についてですね。`
+              ];
+              const echoReply = echoTemplates[Math.floor(Math.random() * echoTemplates.length)];
+
+              if (voiceRecognition && isRecognitionActive) {
+                voiceRecognition.stop();
+              }
+
+              fetchWikipediaSummary(targetWord).then(summary => {
+                if (summary) {
+                  pendingWikiSummary = summary;
+                  isWaitingWikiChoice = true;
+                  const promptReply = `${echoReply} Wikipediaで調べてみました。結果を聞きますか？`;
+                  runAssistantVoice(promptReply, currentLang);
+                } else {
+                  runAssistantVoice(`${echoReply} ですが、Wikipediaの情報は見つかりませんでした。`, currentLang);
+                }
+              });
+
+              isEchoWikiLocked = true;
+              return;
+            }
+          }
+        };
+
+        updateSpeechRecognitionLang();
+        setInterval(() => { if (!isRecognitionActive && !isForceMuted) safeStartRecognition(); }, 1000);
+      } else {
+        console.warn("Speech API 非対応ブラウザです。Chrome等を使用してください。");
+      }
+
+      function safeStartRecognition() {
+        if (voiceRecognition && !isRecognitionActive && !isSpeaking) {
+          try { voiceRecognition.start(); } catch (e) {}
+        }
+      }
+
+      function updateSpeechRecognitionLang() {
+        if (!voiceRecognition) return;
+        if (isRecognitionActive) { voiceRecognition.stop(); }
+        voiceRecognition.lang = langConfig[currentLang].recognitionLang;
+        safeStartRecognition();
+      }
+
+      document.body.addEventListener('click', (e) => {
+        if (e.target === toggleBtn || e.target === toggleLangBtn || e.target === toggleCreditsBtn || e.target === closeCreditsBtn) return;
+        if (isForceMuted) return;
+
+        unlockAudio();
+        safeStartRecognition();
+        resetSilenceTimer();
+        triggerTalk();
+      });
+    </script>
+  </body>
+</html>
