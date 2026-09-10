@@ -275,8 +275,14 @@
         <h3>4. セーフティ＆モデレーション指示</h3>
         <p>AIのプロンプトには、YouTubeコミュニティガイドラインの徹底遵守、暴言・ヘイトスピーチ・不適切発言の厳禁、ポジティブで安全な応答指示が標準で組み込まれています。</p>
 
-        <h3>5. VOICEVOX 起動手順（音声合成用）</h3>
-        <p>GitHub Pages 等の外部 Web サイトからローカルの VOICEVOX（<code>http://localhost:50021</code>）へ接続する場合は、起動ショートカットの「リンク先」末尾に半角スペースを入れて <code>--cors_policy_mode all</code> を付与して起動してください。</p>
+        <h3>5. VOICEVOX 起動手順（CORS / PNA制限の解除）</h3>
+        <p>ローカル環境（<code>http://localhost:50021</code>）の VOICEVOX へクロスオリジン接続する場合は、VOICEVOX 起動時に <code>--cors_policy_mode all</code> オプションを指定してください。</p>
+        <p><strong>【起動コマンドの追加手順】</strong></p>
+        <ul>
+          <li>VOICEVOXのショートカットアイコンを右クリック ➔ 「プロパティ」を開く。</li>
+          <li>「リンク先」の末尾に半角スペースを1つ入れ、<code>--cors_policy_mode all</code> を追記して適用する。</li>
+          <li>例: <code>"C:\Program Files\VOICEVOX\vv-engine.exe" --cors_policy_mode all</code></li>
+        </ul>
 
         <h2>📜 CREDITS & LICENSES</h2>
 
