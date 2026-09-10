@@ -792,11 +792,19 @@
 
       async function speakWithVoicevox(text) {
         stopCurrentVoice();
-        const queryRes = await fetch(`${VOICEVOX_HOST}/audio_query?speaker=${VOICEVOX_SPEAKER_ID}&text=${encodeURIComponent(text)}`, { method: 'POST' });
+        // Chrome PNA対策: targetAddressSpace: 'local' を追加
+        const queryRes = await fetch(`${VOICEVOX_HOST}/audio_query?speaker=${VOICEVOX_SPEAKER_ID}&text=${encodeURIComponent(text)}`, {
+          method: 'POST',
+          targetAddressSpace: 'local'
+        });
         if (!queryRes.ok) throw new Error("VOICEVOX エラー");
         const queryData = await queryRes.json();
+        // Chrome PNA対策: targetAddressSpace: 'local' を追加
         const synthRes = await fetch(`${VOICEVOX_HOST}/synthesis?speaker=${VOICEVOX_SPEAKER_ID}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(queryData)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(queryData),
+          targetAddressSpace: 'local'
         });
         const audioBlob = await synthRes.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
