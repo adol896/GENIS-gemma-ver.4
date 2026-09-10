@@ -168,12 +168,12 @@
       .modal-content pre { background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 10px; color: #aaa; }
     </style>
 
-    <!-- データファイルの読み込み（存在しない場合でも安全にフォールバック処理） -->
+    <!-- データファイルの読み込み -->
     <script src="data.js" onerror="console.warn('data.js の読み込みをスキップしました')"></script>
     <script src="data2.js" onerror="console.warn('data2.js の読み込みをスキップしました')"></script>
     <script src="kuromoji.js" onerror="console.warn('kuromoji.js の読み込みをスキップしました')"></script>
 
-    <!-- WebLLM (WebGPU ブラウザ直接実行 LLM) モジュール読み込み -->
+    <!-- WebLLM モジュール読み込み -->
     <script type="module">
       import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
@@ -201,7 +201,6 @@
           console.log("WebGPU Gemma 2 2B の準備が完了しました！");
           window.isWebLLMLoading = false;
 
-          // 準備完了のアナウンスを発声
           if (typeof window.runAssistantVoice === 'function') {
             window.isForceMuted = false;
             if (window.stopSilenceTimer) window.stopSilenceTimer();
@@ -261,46 +260,23 @@
         <h2>📖 使い方 ＆ 機能解説マニュアル</h2>
         
         <h3>1. WebGPU Gemma 2 (2B) ブラウザローカルAI機能</h3>
-        <p>画面を 1 回クリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期読み込み（自動ダウンロード）され、PC の GPU 資源を活用してローカル環境で直接推論が行われます。読み込み完了時にジェニスが「AI機能の準備が完了しました！」と音声アナウンスします。</p>
+        <p>画面を 1 回クリックしてアンロックすると、ブラウザ内で <code>Gemma 2 (2B)</code> の軽量モデルデータが初期読み込みされ、PC の GPU 資源を活用してローカル環境で直接推論が行われます。</p>
 
         <h3>2. 20秒交互サイクル（応答 ↔ 待機）仕様</h3>
         <ul>
-          <li><strong>【応答フェーズ (20秒間)】:</strong> 配信者が話した内容をバックグラウンドで解析し、喋り終わり（2.5秒の沈黙）を検知して <strong>1回のみ・1〜2文の短文で</strong> ジェニスが返答します。連続してコロコロセリフが変わるのを防止しています。</li>
-          <li><strong>【待機フェーズ (20秒間)】:</strong> 次の20秒間はジェニスが応答をお休み（待機状態）し、配信者のトークを邪魔しないように沈黙します。</li>
+          <li><strong>【応答フェーズ (20秒間)】:</strong> 配信者が話した内容を解析し、2.5秒の沈黙を検知して 1回のみ短文で返答します。</li>
+          <li><strong>【待機フェーズ (20秒間)】:</strong> 配信者のトークを邪魔しないよう待機します。</li>
         </ul>
 
-        <h3>3. 20秒無言時の `data2.js` 自動セリフ機能</h3>
-        <p>配信者および AI の両方が 20 秒間沈黙した場合、<code>data2.js</code>（および <code>data.js</code>）内に事前登録されたセリフリストからランダムに自動発声を行い、配信の無音を防止します。</p>
+        <h3>3. 20秒無言時の自動セリフ機能</h3>
+        <p>20 秒間沈黙した場合、<code>data2.js</code>（および <code>data.js</code>）内のセリフから自動発声します。</p>
 
-        <h3>4. セーフティ＆モデレーション指示</h3>
-        <p>AIのプロンプトには、YouTubeコミュニティガイドラインの徹底遵守、暴言・ヘイトスピーチ・不適切発言の厳禁、ポジティブで安全な応答指示が標準で組み込まれています。</p>
-
-        <h3>5. VOICEVOX 起動手順（CORS / PNA制限の解除）</h3>
-        <p>ローカル環境（<code>http://localhost:50021</code>）の VOICEVOX へクロスオリジン接続する場合は、VOICEVOX 起動時に <code>--cors_policy_mode all</code> オプションを指定してください。</p>
-        <p><strong>【起動コマンドの追加手順】</strong></p>
-        <ul>
-          <li>VOICEVOXのショートカットアイコンを右クリック ➔ 「プロパティ」を開く。</li>
-          <li>「リンク先」の末尾に半角スペースを1つ入れ、<code>--cors_policy_mode all</code> を追記して適用する。</li>
-          <li>例: <code>"C:\Program Files\VOICEVOX\vv-engine.exe" --cors_policy_mode all</code></li>
-        </ul>
+        <h3>4. VOICEVOX 起動手順</h3>
+        <p>VOICEVOX 起動時に <code>--cors_policy_mode all</code> オプションを指定してください。</p>
 
         <h2>📜 CREDITS & LICENSES</h2>
-
-        <h3>WebLLM & Gemma 2 (Google)</h3>
-        <p>In-Browser LLM Inference Engine powered by <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">@mlc-ai/web-llm</a> (Apache License 2.0).</p>
-        <p>AI Model: Gemma 2 (2B Instruction Tuned) by Google (Gemma Terms of Use).</p>
-
-        <h3>VOICEVOX</h3>
-        <p>音声合成: <a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener">VOICEVOX: ナースロボ＿タイプＴ</a></p>
-        <p>キャラクターデザイン・音声: ナースロボ＿タイプＴ (利用規約に準拠して使用しています)</p>
-
-        <h3>kuromoji.js & IPADIC</h3>
-        <p>JavaScript port of Kuromoji Japanese morphological analyzer.</p>
-        <p>Copyright (c) 2014 Takuya Asano (Apache License 2.0).</p>
-        <p>Dictionary data powered by IPADIC (Copyright 1999-2007 IPA, Japan).</p>
-
-        <h3>Sound Effects</h3>
-        <p>効果音: <code>剣を抜く.mp3</code> (効果音ラボ 提供)</p>
+        <p>In-Browser LLM Engine: @mlc-ai/web-llm (Apache 2.0)</p>
+        <p>音声合成: VOICEVOX: ナースロボ＿タイプＴ</p>
 
         <div style="text-align: right; margin-top: 20px;">
           <button id="close-credits-btn" class="ui-btn">CLOSE</button>
@@ -309,17 +285,11 @@
     </div>
 
     <script>
-      // =========================================================
       // Kuromoji 初期化
-      // =========================================================
       let tokenizerInstance = null;
-
       if (typeof kuromoji !== 'undefined') {
         kuromoji.builder({ dicPath: "./dict/" }).build((err, tokenizer) => {
-          if (err) {
-            console.error("Kuromoji 辞書のロードに失敗しました:", err);
-            return;
-          }
+          if (err) return;
           tokenizerInstance = tokenizer;
           console.log("Kuromoji 辞書のロードが完了しました！");
         });
@@ -341,12 +311,10 @@
       });
 
       creditsModal.addEventListener('click', (e) => {
-        if (e.target === creditsModal) {
-          creditsModal.classList.remove('show');
-        }
+        if (e.target === creditsModal) creditsModal.classList.remove('show');
       });
 
-      // データの統合処理 (data.js と data2.js をマージ)
+      // データの統合処理
       const rawData1 = window.AIData1 || window.AIData || {};
       const rawData2 = window.AIData2 || {};
 
@@ -370,27 +338,13 @@
       };
 
       const defaultOncePhrases = {
-        ja: [
-          "この1週間の中で、一番「美味しかったなぁ」って思った食べ物は何ですか？",
-          "ここ1ヶ月の間で、買って良かった便利グッズやアイテムって何かありましたか？",
-          "最近コンビニやスーパーで見かけて、つい買っちゃった新商品ってありますか？"
-        ],
-        en: [
-          "What was the best food you ate this past week?",
-          "Have you bought anything really useful or fun in the last month?"
-        ]
+        ja: ["この1週間の中で、一番「美味しかったなぁ」って思った食べ物は何ですか？"],
+        en: ["What was the best food you ate this past week?"]
       };
 
       const defaultLoopPhrases = {
-        ja: [
-          "いい雰囲気ですね。このまったりした空気、とても落ち着きます。",
-          "画面の向こうの皆さんも、お茶でも飲みながらのんびり見ていってくださいね。",
-          "今日もマイペースに楽しんでいきましょう。"
-        ],
-        en: [
-          "I really love this relaxed atmosphere. It's so cozy here.",
-          "Feel free to grab a drink and get comfortable, everyone!"
-        ]
+        ja: ["いい雰囲気ですね。このまったりした空気、とても落ち着きます。"],
+        en: ["I really love this relaxed atmosphere. It's so cozy here."]
       };
 
       const oncePhrases = {
@@ -407,44 +361,30 @@
         ja: {
           recognitionLang: 'ja-JP',
           scDefaultText: "ありがとうございます！",
-          scKeywords: ["スパチャ", "スーパーチャット", "ありがとうございまーす", "ありがとうございます", "感謝"],
-          cutInRules: [
-            { keywords: ["ここだ"], text: "ここだ！" },
-            { keywords: ["ここで決める", "これで決める"], text: "これで決める！" }
-          ]
+          scKeywords: ["スパチャ", "スーパーチャット", "ありがとうございまーす", "感謝"],
+          cutInRules: [{ keywords: ["ここだ"], text: "ここだ！" }]
         },
         en: {
           recognitionLang: 'en-US',
           scDefaultText: "THANK YOU SO MUCH!",
-          scKeywords: ["super chat", "superchat", "thank you", "thanks for the support", "thanks"],
-          cutInRules: [
-            { keywords: ["this is it", "here goes", "now"], text: "THIS IS IT!" },
-            { keywords: ["finish this", "let's do this", "take this"], text: "LET'S DO THIS!" }
-          ]
+          scKeywords: ["super chat", "thank you", "thanks"],
+          cutInRules: [{ keywords: ["this is it"], text: "THIS IS IT!" }]
         }
       };
 
       // 音声・SE再生設定
       const sePlayer = new Audio('./' + encodeURIComponent("剣を抜く.mp3"));
       sePlayer.volume = 0.7;
-
       let isAudioUnlocked = false;
 
       function unlockAudio() {
         if (isAudioUnlocked) return;
-
         sePlayer.volume = 0;
         sePlayer.play().then(() => {
-          sePlayer.pause();
-          sePlayer.currentTime = 0;
-          sePlayer.volume = 0.7;
+          sePlayer.pause(); sePlayer.currentTime = 0; sePlayer.volume = 0.7;
           isAudioUnlocked = true;
-          console.log("SE のオーディオ再生制限を解除しました。");
-        }).catch((err) => {
-          console.warn("オーディオアンロック失敗:", err);
-        });
+        }).catch(() => {});
 
-        // 初回クリック時に WebGPU Gemma モデルのダウンロードを開始
         if (typeof window.initWebLLMModel === 'function') {
           window.initWebLLMModel();
         }
@@ -453,12 +393,8 @@
       function playSuperChatSynthSE() {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
-
         const ctx = new AudioContext();
-        if (ctx.state === 'suspended') {
-          ctx.resume();
-        }
-
+        if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime;
         const masterGain = ctx.createGain();
         masterGain.gain.setValueAtTime(1.6, now);
@@ -469,33 +405,19 @@
           const timeOffset = index * 0.05;
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
-
           osc.type = index % 2 === 0 ? 'sine' : 'triangle';
           osc.frequency.setValueAtTime(freq, now + timeOffset);
-          osc.frequency.exponentialRampToValueAtTime(freq * 1.2, now + timeOffset + 0.5);
-
           gain.gain.setValueAtTime(0.35, now + timeOffset);
           gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.5);
-
-          osc.connect(gain);
-          gain.connect(masterGain);
-
-          osc.start(now + timeOffset);
-          osc.stop(now + timeOffset + 0.55);
+          osc.connect(gain); gain.connect(masterGain);
+          osc.start(now + timeOffset); osc.stop(now + timeOffset + 0.55);
         });
       }
 
-      // グローバル管理フラグ ＆ 関数定義
       window.isForceMuted = true;
-      let isWaitingPermissionResponse = false;
-
-      // =========================================================
-      // 20秒 Gemma 応答 ↔ 待機 サイクル ＆ 無言自動トーク管理
-      // =========================================================
       let silenceTimer = null;
       const SILENCE_LIMIT = 20 * 1000;
-
-      let gemmaCycleState = 'ACTIVE'; // 'ACTIVE': 20秒応答可能モード / 'IDLE': 20秒待機モード
+      let gemmaCycleState = 'ACTIVE';
       let gemmaCycleTimer = null;
       let userSpeechBuffer = [];
       let hasRespondedInCurrentCycle = false;
@@ -504,18 +426,13 @@
         if (gemmaCycleTimer) clearInterval(gemmaCycleTimer);
         gemmaCycleTimer = setInterval(() => {
           if (window.isForceMuted) return;
-
           if (gemmaCycleState === 'ACTIVE') {
-            if (!hasRespondedInCurrentCycle && userSpeechBuffer.length > 0) {
-              processGemmaResponse();
-            }
+            if (!hasRespondedInCurrentCycle && userSpeechBuffer.length > 0) processGemmaResponse();
             gemmaCycleState = 'IDLE';
-            console.log("Gemma サイクル: IDLE (待機・応答しない20秒)");
           } else {
             gemmaCycleState = 'ACTIVE';
             hasRespondedInCurrentCycle = false;
             userSpeechBuffer = [];
-            console.log("Gemma サイクル: ACTIVE (発言監視・1回応答20秒)");
           }
         }, SILENCE_LIMIT);
       }
@@ -533,148 +450,87 @@
       }
       window.stopSilenceTimer = stopSilenceTimer;
 
-      // 20秒間完全無言時に data2.js / data.js から発言
       function triggerSilenceTalk() {
-        if (window.isForceMuted || isSpeaking) {
-          resetSilenceTimer();
-          return;
-        }
-
-        isAutomaticTalk = true;
+        if (window.isForceMuted || isSpeaking) { resetSilenceTimer(); return; }
         const silenceList = aiData.silencePhrases?.[currentLang] || [];
-
         if (silenceList.length > 0 && Math.random() < 0.5) {
           const randomIndex = Math.floor(Math.random() * silenceList.length);
           runAssistantVoice(silenceList[randomIndex], currentLang);
         } else {
           const nextText = getNextText();
-          if (nextText) {
-            runAssistantVoice(nextText, currentLang);
-          }
+          if (nextText) runAssistantVoice(nextText, currentLang);
         }
       }
 
-      // WebGPU (WebLLM) Gemma 推論呼び出し (言語設定を反映)
       async function fetchGemmaResponse(promptText) {
-        if (!window.webLLMEngine) {
-          console.warn("WebGPU Gemma がまだロード完了していません。");
-          return null;
-        }
-
+        if (!window.webLLMEngine) return null;
         const isEnglish = (currentLang === 'en');
         const systemPrompt = isEnglish
-          ? `You are "Genis", a friendly AI live stream assistant. Respond to the streamer's commentary naturally in only 1 or 2 short sentences.
-
-[Safety & Guidelines]
-- Strictly follow YouTube Community Guidelines.
-- Profanity, hate speech, discrimination, explicit content, or offensive language are strictly prohibited.
-- Always maintain a polite, encouraging, and safe tone.`
-          : `あなたは配信アシスタント「ジェニス」です。配信者の言葉に対して、自然に1文または2文のみで短く応答してください。
-
-【セーフティ＆配信ルール】
-・YouTubeコミュニティガイドラインを厳守してください。
-・暴言、ヘイトスピーチ、差別的表現、性的・暴力的な発言、公序良俗に反する不適切な言葉は一切禁止です。
-・常に親しみやすく、明るく安全で丁寧な言葉遣いを徹底してください。`;
+          ? `You are "Genis", a friendly AI live stream assistant. Respond naturally in 1 or 2 short sentences.`
+          : `あなたは配信アシスタント「ジェニス」です。自然に1文または2文のみで短く応答してください。`;
 
         try {
-          const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: promptText }
-          ];
-
           const reply = await window.webLLMEngine.chat.completions.create({
-            messages: messages,
-            temperature: 0.6,
-            max_tokens: 100,
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: promptText }],
+            temperature: 0.6, max_tokens: 100,
           });
-
-          let resultText = reply.choices[0]?.message?.content || "";
-          resultText = resultText.trim();
-
+          let resultText = (reply.choices[0]?.message?.content || "").trim();
           const sentences = resultText.split(/(?<=[。！？!?\n])/);
-          if (sentences.length > 2) {
-            resultText = sentences.slice(0, 2).join("");
-          }
+          if (sentences.length > 2) resultText = sentences.slice(0, 2).join("");
           return resultText;
         } catch (err) {
-          console.error("WebGPU 推論エラー:", err);
           return null;
         }
       }
 
       async function processGemmaResponse() {
         if (userSpeechBuffer.length === 0 || isSpeaking || window.isForceMuted) return;
-
         hasRespondedInCurrentCycle = true;
         const combinedText = userSpeechBuffer.join(" ");
         userSpeechBuffer = [];
-
-        console.log("WebGPU Gemma 解析中... 入力:", combinedText);
         aiStatusMsg.innerText = "THINKING";
-
         const gemmaReply = await fetchGemmaResponse(combinedText);
-
-        if (gemmaReply && gemmaReply.length > 0) {
-          runAssistantVoice(gemmaReply, currentLang);
-        } else {
-          triggerTalk();
-        }
+        if (gemmaReply && gemmaReply.length > 0) runAssistantVoice(gemmaReply, currentLang);
+        else triggerTalk();
       }
 
-      // カットイン・スパチャ機能
       async function executePhraseCutIn(text) {
         if (window.isForceMuted) return;
         const cutInBox = document.getElementById('phrase-cutin-box');
         const cutInText = document.getElementById('phrase-text-content');
-
         cutInText.innerText = text;
         cutInBox.classList.remove('slide-in', 'slide-out');
         void cutInBox.offsetWidth;
         cutInBox.classList.add('slide-in');
-
-        try {
-          sePlayer.currentTime = 0;
-          await sePlayer.play();
-        } catch (audioErr) {}
-
+        try { sePlayer.currentTime = 0; await sePlayer.play(); } catch (e) {}
         setTimeout(() => {
-          cutInBox.classList.remove('slide-in');
-          cutInBox.classList.add('slide-out');
+          cutInBox.classList.remove('slide-in'); cutInBox.classList.add('slide-out');
           setTimeout(() => cutInBox.classList.remove('slide-out'), 300);
         }, 3000);
       }
 
       function triggerSuperChatEffects() {
         if (window.isForceMuted) return;
-        const scBox = document.getElementById('sc-popup-box');
-        scBox.classList.add('show');
+        document.getElementById('sc-popup-box').classList.add('show');
         fireConfetti();
         setTimeout(() => playSuperChatSynthSE(), 50);
-        setTimeout(() => scBox.classList.remove('show'), 4000);
+        setTimeout(() => document.getElementById('sc-popup-box').classList.remove('show'), 4000);
       }
 
       const canvas = document.getElementById('canvas-confetti');
       const ctx = canvas.getContext('2d');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      let particles = [];
-      let animatingConfetti = false;
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      let particles = [], animatingConfetti = false;
 
       function fireConfetti() {
         const colors = ['#ff4e50', '#f9d423', '#00f3ff', '#ffffff', '#ff00ff'];
         particles = [];
         for (let i = 0; i < 120; i++) {
           particles.push({
-            x: canvas.width / 2,
-            y: canvas.height / 2 + 50,
-            r: Math.random() * 6 + 4,
-            dx: Math.random() * 30 - 15,
-            dy: Math.random() * -20 - 10,
+            x: canvas.width / 2, y: canvas.height / 2 + 50, r: Math.random() * 6 + 4,
+            dx: Math.random() * 30 - 15, dy: Math.random() * -20 - 10,
             color: colors[Math.floor(Math.random() * colors.length)],
-            tilt: Math.floor(Math.random() * 10) - 10,
-            tiltAngle: 0,
-            tiltAngleInc: (Math.random() * 0.07) + 0.05
+            tilt: Math.floor(Math.random() * 10) - 10, tiltAngle: 0, tiltAngleInc: (Math.random() * 0.07) + 0.05
           });
         }
         if (!animatingConfetti) animateConfetti();
@@ -684,14 +540,10 @@
         animatingConfetti = true;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         particles.forEach((p, index) => {
-          p.tiltAngle += p.tiltAngleInc;
-          p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
-          p.x += Math.sin(p.tiltAngle) * 2;
-          p.dy += 0.4; p.x += p.dx; p.y += p.dy;
-          ctx.beginPath();
-          ctx.lineWidth = p.r; ctx.strokeStyle = p.color;
-          ctx.moveTo(p.x + p.tilt + p.r, p.y);
-          ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+          p.tiltAngle += p.tiltAngleInc; p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
+          p.x += Math.sin(p.tiltAngle) * 2; p.dy += 0.4; p.x += p.dx; p.y += p.dy;
+          ctx.beginPath(); ctx.lineWidth = p.r; ctx.strokeStyle = p.color;
+          ctx.moveTo(p.x + p.tilt + p.r, p.y); ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
           ctx.stroke();
           if (p.y > canvas.height) particles.splice(index, 1);
         });
@@ -707,7 +559,6 @@
       let currentLang = 'ja';
       window.currentLang = currentLang;
       let currentVoiceAudio = null;
-      let isAutomaticTalk = false;
 
       const avatarOrb = document.getElementById('avatar-orb');
       const aiStatusMsg = document.getElementById('ai-status-msg');
@@ -718,7 +569,6 @@
 
       let orbPulseInterval = null;
       const currentLoopDecks = { ja: [], en: [] };
-      const ONCE_PHRASE_CHANCE = 0.3;
 
       function shuffleArray(array) {
         const shuffled = [...array];
@@ -731,8 +581,7 @@
 
       function getNextText() {
         const lang = currentLang;
-        const hasOnce = oncePhrases[lang] && oncePhrases[lang].length > 0;
-        if (hasOnce && Math.random() < ONCE_PHRASE_CHANCE) {
+        if (oncePhrases[lang]?.length > 0 && Math.random() < 0.3) {
           const index = Math.floor(Math.random() * oncePhrases[lang].length);
           const selectedText = oncePhrases[lang][index];
           oncePhrases[lang].splice(index, 1);
@@ -745,8 +594,7 @@
       }
 
       toggleLangBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        unlockAudio();
+        e.stopPropagation(); unlockAudio();
         currentLang = (currentLang === 'ja') ? 'en' : 'ja';
         window.currentLang = currentLang;
         toggleLangBtn.innerText = `LANG: ${currentLang.toUpperCase()}`;
@@ -755,8 +603,7 @@
       });
 
       toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        unlockAudio();
+        e.stopPropagation(); unlockAudio();
         const isHidden = avatarFrame.classList.toggle('element-hide');
         aiStatusMsg.classList.toggle('element-hide');
         toggleBtn.innerText = isHidden ? "AVATAR SHOW" : "AVATAR HIDE";
@@ -783,8 +630,7 @@
         for (let i = 0; i < text.length; i++) {
           current += text[i];
           if (current.length >= maxLength || "、。！？,!?".includes(text[i])) {
-            chunks.push(current.trim());
-            current = "";
+            chunks.push(current.trim()); current = "";
           }
         }
         if (current) chunks.push(current.trim());
@@ -792,29 +638,23 @@
       }
 
       function stopCurrentVoice() {
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-        }
-        if (currentVoiceAudio) {
-          currentVoiceAudio.pause(); currentVoiceAudio.currentTime = 0; currentVoiceAudio = null;
-        }
+        if (window.speechSynthesis && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        if (currentVoiceAudio) { currentVoiceAudio.pause(); currentVoiceAudio.currentTime = 0; currentVoiceAudio = null; }
       }
 
+      // ★ 修正箇所: fetch から不要な targetAddressSpace オプションを削除
       async function speakWithVoicevox(text) {
         stopCurrentVoice();
-        // Chrome PNA対策: targetAddressSpace: 'local'
         const queryRes = await fetch(`${VOICEVOX_HOST}/audio_query?speaker=${VOICEVOX_SPEAKER_ID}&text=${encodeURIComponent(text)}`, {
-          method: 'POST',
-          targetAddressSpace: 'local'
+          method: 'POST'
         });
         if (!queryRes.ok) throw new Error("VOICEVOX エラー");
         const queryData = await queryRes.json();
-        // Chrome PNA対策: targetAddressSpace: 'local'
+        
         const synthRes = await fetch(`${VOICEVOX_HOST}/synthesis?speaker=${VOICEVOX_SPEAKER_ID}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(queryData),
-          targetAddressSpace: 'local'
+          body: JSON.stringify(queryData)
         });
         const audioBlob = await synthRes.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -875,7 +715,6 @@
         updateAvatarState();
         aiStatusMsg.innerText = window.isForceMuted ? "MUTED" : "STANDBY";
         aiSubtitleBox.classList.remove('active');
-
         safeStartRecognition();
       }
       window.runAssistantVoice = runAssistantVoice;
@@ -889,8 +728,8 @@
       // 音声認識
       let isRecognitionActive = false;
       let voiceRecognition = null;
-
       const WebKitSpeech = window.SpeechRecognition || window.webkitSpeechRecognition;
+
       if (WebKitSpeech) {
         voiceRecognition = new WebKitSpeech();
         voiceRecognition.continuous = true;
@@ -910,13 +749,10 @@
             tokenSurfaces = tokenizerInstance.tokenize(heardPhrase).map(t => t.surface_form);
           }
 
-          // 音声による話しかけ再開
           const resumeKeywords = ["話そうぜ", "喋ってくれ", "いいよ", "再開", "話して"];
           if (window.isForceMuted && resumeKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw))) {
             window.isForceMuted = false;
-            stopSilenceTimer();
-            resetSilenceTimer();
-            startGemmaCycleTimer();
+            stopSilenceTimer(); resetSilenceTimer(); startGemmaCycleTimer();
             aiStatusMsg.innerText = "STANDBY";
             runAssistantVoice("分かりました！お話ししましょう。", currentLang);
             return;
@@ -925,7 +761,6 @@
           if (window.isForceMuted) return;
           resetSilenceTimer();
 
-          // 静寂（ミュート）コマンド
           const quietKeywords = ["黙って", "静かにして", "喋るのやめて", "静かに"];
           if (quietKeywords.some(kw => heardPhrase.includes(kw) || tokenSurfaces.includes(kw))) {
             window.isForceMuted = true;
@@ -937,19 +772,16 @@
             return;
           }
 
-          // 1. スパチャ判定
           if (config.scKeywords.some(kw => heardPhrase.includes(kw.toLowerCase()))) {
             triggerSuperChatEffects(); return;
           }
 
-          // 2. カットイン判定
           for (const rule of config.cutInRules) {
             if (rule.keywords.some(kw => heardPhrase.includes(kw.toLowerCase()))) {
               executePhraseCutIn(rule.text); return;
             }
           }
 
-          // 3. 辞書パターン（patternDict）の優先判定
           const patterns = aiData.patternDict?.[currentLang] || [];
           for (const item of patterns) {
             const regex = new RegExp(item.pattern, "i");
@@ -963,16 +795,12 @@
             }
           }
 
-          // 4. WebGPU Gemma 20秒応答モード処理
           if (gemmaCycleState === 'ACTIVE' && !hasRespondedInCurrentCycle) {
             userSpeechBuffer.push(heardPhrase);
-
             clearTimeout(window.gemmaDebounceTimer);
             window.gemmaDebounceTimer = setTimeout(() => {
-              if (gemmaCycleState === 'ACTIVE' && !hasRespondedInCurrentCycle) {
-                processGemmaResponse();
-              }
-            }, 2500); // 2.5秒沈黙後に1回のみ応答
+              if (gemmaCycleState === 'ACTIVE' && !hasRespondedInCurrentCycle) processGemmaResponse();
+            }, 2500);
           }
         };
 
