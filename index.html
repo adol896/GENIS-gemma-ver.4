@@ -258,7 +258,10 @@
         <h3>3. 20秒無言時の `data2.js` 自動セリフ機能</h3>
         <p>配信者および AI の両方が 20 秒間沈黙した場合、<code>data2.js</code>（および <code>data.js</code>）内に事前登録されたセリフリストからランダムに自動発声を行い、配信の無音を防止します。</p>
 
-        <h3>4. VOICEVOX 起動手順（音声合成用）</h3>
+        <h3>4. セーフティ＆モデレーション指示</h3>
+        <p>AIのプロンプトには、YouTubeコミュニティガイドラインの徹底遵守、暴言・ヘイトスピーチ・不適切発言の厳禁、ポジティブで安全な応答指示が標準で組み込まれています。</p>
+
+        <h3>5. VOICEVOX 起動手順（音声合成用）</h3>
         <p>GitHub Pages 等の外部 Web サイトからローカルの VOICEVOX（<code>http://localhost:50021</code>）へ接続する場合は、起動ショートカットの「リンク先」末尾に半角スペースを入れて <code>--cors_policy_mode all</code> を付与して起動してください。</p>
 
         <h2>📜 CREDITS & LICENSES</h2>
@@ -532,7 +535,7 @@
         }
       }
 
-      // WebGPU (WebLLM) Gemma 推論呼び出し
+      // WebGPU (WebLLM) Gemma 推論呼び出し（セーフティ指示追加版）
       async function fetchGemmaResponse(promptText) {
         if (!window.webLLMEngine) {
           console.warn("WebGPU Gemma がまだロード完了していません。");
@@ -543,7 +546,12 @@
           const messages = [
             {
               role: "system",
-              content: "あなたは配信アシスタント「ジェニス」です。配信者の言葉に対して、自然に1文または2文のみで短く応答してください。"
+              content: `あなたは配信アシスタント「ジェニス」です。配信者の言葉に対して、自然に1文または2文のみで短く応答してください。
+
+【セーフティ＆配信ルール】
+・YouTubeコミュニティガイドラインを厳守してください。
+・暴言、ヘイトスピーチ、差別的表現、性的・暴力的な発言、公序良俗に反する不適切な言葉は一切禁止です。
+・常に親しみやすく、明るく安全で丁寧な言葉遣いを徹底してください。`
             },
             {
               role: "user",
@@ -553,7 +561,7 @@
 
           const reply = await window.webLLMEngine.chat.completions.create({
             messages: messages,
-            temperature: 0.7,
+            temperature: 0.6,
             max_tokens: 100,
           });
 
