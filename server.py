@@ -24,29 +24,7 @@ class PNAHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-def check_index_html_pna(file_path):
-    """index.html内に targetAddressSpace: 'local' が記述されているか確認する"""
-    if not os.path.exists(file_path):
-        return
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        if "targetAddressSpace" in content:
-            print(f"[PNA Check] {file_path} に targetAddressSpace 設定を確認しました。")
-        else:
-            print(f"[PNA Check 警告] {file_path} 内に targetAddressSpace の記述が見つかりません。")
-            print("  ChromeでのVOICEVOX接続時にPNAエラーが発生する可能性があります。")
-    except Exception as e:
-        print(f"[警告] {file_path} の自動チェックをスキップしました: {e}")
-
-
 if __name__ == "__main__":
-    # index.html の記法チェック
-    check_index_html_pna(HTML_FILENAME)
-
-    # サーバーの立ち上げ
     server_address = ("", PORT)
     httpd = http.server.HTTPServer(server_address, PNAHTTPRequestHandler)
 
